@@ -257,12 +257,16 @@ button{font:inherit;color:inherit}
 
 /* ===== 1画面レイアウト：どの画面幅でもページをスクロールさせない ===== */
 html,body{overflow:hidden;overscroll-behavior:none}
-#app{height:100%;min-height:0;overflow:hidden;padding-inline:16px}
+/* 高さとsafe-areaをアプリのborder-box内で一元管理する */
+:root{padding:0}
+#app{height:100vh;height:var(--app-height,100vh);min-height:0;overflow:hidden;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+@supports(height:100dvh){#app{height:var(--app-height,100dvh)}}
+#app>*{min-width:0}
 .hud{flex:none;padding:8px 0 6px}
 .stageBox{flex:1 1 0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
 .stage{flex:none;width:min(100cqw,80cqh);height:min(100cqh,125cqw);aspect-ratio:auto;max-width:100%;margin:0}
-@supports not (width:1cqw){ .stage{width:min(100%,calc((100dvh - 340px)*.8));height:auto;aspect-ratio:4/5} }
-.panel{flex:none;min-height:0;height:clamp(186px,34%,280px);padding:10px 0 12px;display:flex;flex-direction:column;transition:height .28s ease}
+@supports not (width:1cqw){ .stage{width:100%;height:auto;aspect-ratio:4/5} } /* 親の実測寸法でJSが補完 */
+.panel{flex:none;min-height:0;height:clamp(186px,34%,280px);padding:10px 0 12px;display:flex;flex-direction:column;transition:none}
 #app.tall .panel{height:clamp(236px,45%,340px)}
 .pane.on{display:flex;flex-direction:column;flex:1;min-height:0}
 
@@ -292,7 +296,7 @@ html,body{overflow:hidden;overscroll-behavior:none}
 /* メニュー：見出し＋一覧（4件以上は2列） */
 .menu-h{flex:none;margin:0 2px 6px}
 .menu-h h2{font-size:16px}
-.x{width:30px;height:30px;font-size:14px}
+.x{width:44px;height:44px;font-size:16px;flex:none}
 .menu-list{flex:1;min-height:0;max-height:none;overflow-y:auto;gap:6px}
 .menu-list.grid2{grid-template-columns:1fr 1fr}
 .menu-list.rsmode,.menu-list.tpmode{grid-template-columns:1fr;max-height:none;overflow-y:auto}
@@ -313,7 +317,8 @@ html,body{overflow:hidden;overscroll-behavior:none}
 .rs{gap:6px}
 .rs-card{padding:9px 11px}
 .rs-desc{margin:0 0 5px}
-.rs-say{margin:0 0 7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rs-say{margin:0 0 7px;display:block;overflow:visible}
+.rs-say-text{display:block}
 .rs-num{margin:3px 0 7px}
 .rs-go{padding:8px}
 
@@ -333,17 +338,31 @@ html,body{overflow:hidden;overscroll-behavior:none}
 @media (max-height:620px){
   .grid2 .opt .tx span,.grid2 .opt .rt{display:none}
   .rs-desc{display:none}
-  .rs-say{-webkit-line-clamp:1}
   .tp-card{min-height:44px}
 }
+/* 修繕中は内容高を先に確保し、残りをステージに渡す。
+   収まらないときの縦スクロールは#mListだけが担当する。 */
+#app.repair{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto}
+#app.repair .panel{height:auto;max-height:max(0px,calc(var(--app-inner-height,100vh) - var(--hud-height,72px) - clamp(64px,16vh,130px)))}
+.menu-list.rsmode{display:block;flex:0 1 auto}
+.rs{align-content:start}
+.rs-head{flex-wrap:wrap;gap:2px 8px}
+.rs-step{white-space:nowrap}
+.menu-list,#dtext,#ctext,#ov{overscroll-behavior-y:contain}
+button{touch-action:manipulation}
+#ov{padding: max(20px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+#ov .card{margin-block:auto;flex:none}
 /* 横向きの背の低い画面：舞台を左、操作を右に */
 @media (orientation:landscape) and (max-height:560px){
-  #app{max-width:1000px;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,390px);grid-template-rows:auto minmax(0,1fr);column-gap:16px}
+  #app,#app.repair{max-width:1000px;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,390px);grid-template-rows:auto minmax(0,1fr);column-gap:16px}
   .hud{grid-column:2;grid-row:1}
   .stageBox{grid-column:1;grid-row:1 / 3;height:100%;padding-block:8px}
-  .panel,#app.tall .panel{grid-column:2;grid-row:2;height:auto;transition:none}
+  .panel,#app.tall .panel,#app.repair .panel{grid-column:2;grid-row:2;height:auto;max-height:none;transition:none}
 }
-@media (prefers-reduced-motion:reduce){ .panel{transition:none} }
+/* キーボード表示中は会話の表示・入力領域を優先する */
+#app.keyboard-open{display:flex}
+#app.keyboard-open .stageBox{display:none}
+#app.keyboard-open .panel{height:auto;max-height:none;flex:1;min-height:0}
 </style>
 </head>
 <body>
@@ -1584,6 +1603,7 @@ html,body{overflow:hidden;overscroll-behavior:none}
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
 const KEY='kamisama-ikusei-v1';
 const MAXAP=6;
 const LV=[0,20,50,90,140,200,280];
@@ -2280,13 +2300,13 @@ function openRestore(){
   track+='</div>';
   let card;
   if(i>=N){
-    card=`<div class="rs-card"><div class="rs-head"><div class="rs-name">すべての修繕が終わった</div><span class="rs-step">${N} / ${N}</span></div><p class="rs-desc">社はすっかり昔の姿を取り戻した。</p><p class="rs-say"><b>カミサマ</b>むふー！ 見事な社じゃ！ 次は人類支配じゃな！</p></div>`;
+    card=`<div class="rs-card"><div class="rs-head"><div class="rs-name">すべての修繕が終わった</div><span class="rs-step">${N} / ${N}</span></div><p class="rs-desc">社はすっかり昔の姿を取り戻した。</p><p class="rs-say"><b>カミサマ</b><span class="rs-say-text">むふー！ 見事な社じゃ！ 次は人類支配じゃな！</span></p></div>`;
   }else{
     const u=UPG[i], ok=S.faith>=u.cost, pct=Math.min(100,Math.round(S.faith/u.cost*100));
     card=`<div class="rs-card">
       <div class="rs-head"><div class="rs-name">${u.name}</div><span class="rs-step">次の修繕　${i+1} / ${N}</span></div>
       <p class="rs-desc">${u.desc}</p>
-      <p class="rs-say"><b>カミサマ</b>${UPG_SAY[i]}</p>
+      <p class="rs-say"><b>カミサマ</b><span class="rs-say-text">${UPG_SAY[i]}</span></p>
       <div class="rs-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${u.cost}" aria-valuenow="${Math.min(S.faith,u.cost)}" aria-label="信仰のたまり具合"><i style="width:${pct}%"></i></div>
       <div class="rs-num"><span>信仰 ${S.faith} / ${u.cost}</span><span>${ok?'直せます':'あと '+(u.cost-S.faith)}</span></div>
       <button class="rs-go" id="rsGo" ${ok?'':'disabled'}>${ok?`直す（信仰 ${u.cost}）`:'信仰が足りない'}</button>
@@ -2297,7 +2317,7 @@ function openRestore(){
   const go=$('#rsGo'); if(go){ go.onclick=()=>buy(i); }
   showPanel('pMenu');
   (go&&!go.disabled?go:$('#mClose')).focus({preventScroll:true});
-  if(go) requestAnimationFrame(()=>go.scrollIntoView({block:'nearest',behavior:'smooth'}));
+  list.scrollTop=0;
 }
 let tpOrder=[], tpPage=0;
 function openTopics(fresh){
@@ -2350,8 +2370,9 @@ function buy(i){
 
 /* ============ TOUCH: stroke & poke ============ */
 let down=false,dist=0,ticks=0,lx=0,ly=0,onHead=false,moved=false,faceT;
+let activePointer=null, gestureDistance=0, lastStrokeNod=-Infinity;
 function heartBurst(k){
-  if(RIG.ok&&form==='girl'){ const hp=rigToStage(345,150); for(let i=0;i<k;i++){ const h=document.createElement('div'); h.className='heart'; h.textContent='♥'; h.style.left=(hp[0]+Math.random()*18-9)+'%'; h.style.top=hp[1]+'%'; h.style.setProperty('--dx',(Math.random()*40-20)+'px'); h.style.animationDelay=(i*90)+'ms'; stage.appendChild(h); setTimeout(()=>h.remove(),1400);} return; }
+  if(RIG.ok&&form==='girl'){ const hp=rigToStage(345,150); for(let i=0;i<k;i++){ const h=document.createElement('div'); h.className='heart'; h.textContent='♥'; h.style.left=(hp[0]+Math.random()*18-9)+'%'; h.style.top=(hp[1]+Math.random()*18-9)+'%'; h.style.setProperty('--dx',(Math.random()*40-20)+'px'); h.style.animationDelay=(i*90)+'ms'; stage.appendChild(h); setTimeout(()=>h.remove(),1400);} return; }
   const r=charWrap.getBoundingClientRect(), sr=stage.getBoundingClientRect();
   for(let i=0;i<k;i++){
     const h=document.createElement('div'); h.className='heart'; h.textContent='♥';
@@ -2363,28 +2384,39 @@ function heartBurst(k){
 }
 function resetFaceSoon(ms=1400){ clearTimeout(faceT); faceT=setTimeout(()=>{ if(!inDialog&&form==='girl') setFace(defaultFace()); },ms); }
 charWrap.addEventListener('pointerdown',e=>{
-  if(inDialog) return;
+  if(inDialog||down||!e.isPrimary||(e.pointerType==='mouse'&&e.button!==0)) return;
   if(form==='girl' && (!RIG.ok || !rigHit(e))) return;
   if(FORM_IMG[form] && !imgHit(e)) return;
-  down=true; moved=false; dist=0; ticks=0; strokeTicks=0; held=false; lx=e.clientX; ly=e.clientY;
+  activePointer=e.pointerId; down=true; moved=false; dist=0; gestureDistance=0; ticks=0; strokeTicks=0; held=false; lx=e.clientX; ly=e.clientY;
   tZone=zoneAt(e); onHead=(tZone==='head');
   clearTimeout(holdT); holdT=setTimeout(()=>{ if(down&&!moved){ held=true; tzSay(tZone,'hold'); } },650);
   try{charWrap.setPointerCapture(e.pointerId)}catch(_){}
 });
 charWrap.addEventListener('pointermove',e=>{
-  if(!down) return;
-  const dd=Math.hypot(e.clientX-lx,e.clientY-ly); lx=e.clientX; ly=e.clientY; dist+=dd;
-  if(dist>10) moved=true;
+  if(!down||e.pointerId!==activePointer) return;
+  if(e.pointerType==='mouse'&&!(e.buttons&1)){ endPtr(null,true); return; }
+  const dd=Math.hypot(e.clientX-lx,e.clientY-ly); lx=e.clientX; ly=e.clientY; dist+=dd; gestureDistance+=dd;
+  if(gestureDistance>10){ moved=true; clearTimeout(holdT); }
   const plain=form==='girl'&&!charWrap.classList.contains('giant')&&!charWrap.classList.contains('tiny');
-  if(plain && onHead && dist>42){ dist=0; ticks++; setFace('bliss'); heartBurst(1); if(ticks%2===0) anim('squish');
-    if(ticks===7) strokeDone(); resetFaceSoon(); }
-  else if(plain && !onHead && dist>46){ dist=0; strokeTicks++; if(strokeTicks===4) tzSay(tZone,'stroke'); }
+  if(plain && onHead && dist>42){
+    dist=0; ticks++; setFace('bliss');
+    const now=performance.now();
+    heartBurst(1);
+    if(ticks%2===0 && now-lastStrokeNod>=500){ if(!reduceMotion.matches) anim('squish'); lastStrokeNod=now; }
+    if(ticks===7) strokeDone(); resetFaceSoon();
+  }else if(plain && !onHead && dist>46){ dist=0; strokeTicks++; if(strokeTicks===4) tzSay(tZone,'stroke'); }
 });
-function endPtr(){
-  if(!down) return; down=false; clearTimeout(holdT);
-  if(!moved && !held) tzSay(tZone,'tap');
+function endPtr(e,cancelled=false){
+  if(!down||(e&&e.pointerId!==activePointer)) return;
+  const pointer=activePointer; down=false; activePointer=null; clearTimeout(holdT);
+  try{ if(charWrap.hasPointerCapture(pointer)) charWrap.releasePointerCapture(pointer); }catch(_){}
+  if(!cancelled&&!moved&&!held) tzSay(tZone,'tap');
 }
-charWrap.addEventListener('pointerup',endPtr); charWrap.addEventListener('pointercancel',endPtr);
+charWrap.addEventListener('pointerup',e=>endPtr(e));
+charWrap.addEventListener('pointercancel',e=>endPtr(e,true));
+charWrap.addEventListener('lostpointercapture',e=>endPtr(e,true));
+window.addEventListener('blur',()=>endPtr(null,true));
+document.addEventListener('visibilitychange',()=>{if(document.hidden)endPtr(null,true);});
 function strokeDone(){
   if(S.strokesToday<5){ S.strokesToday++; gain({m:5,e:1}); bubble(rnd(STROKE_LINES)); }
   else { setFace('pout'); bubble('も、もう十分じゃ！ 髪がぼさぼさになる！'); }
@@ -5431,17 +5463,60 @@ rule('prefTalk',31.5,null,(ctx)=>{ const pf=prefFind(ctx.t); if(!pf) return null
 (()=>{ const app=$('#app');
  const baseShow=showPanel;
  let cur='pActions';
- const updTall=()=>app.classList.toggle('tall', cur==='pChat'||cur==='pMenu'||(cur==='pDialog'&&(chatMode||$('#choices').children.length>0)));
+ const updTall=()=>{
+   app.classList.toggle('tall',cur==='pChat'||cur==='pMenu'||(cur==='pDialog'&&(chatMode||$('#choices').children.length>0)));
+   app.classList.toggle('repair',cur==='pMenu'&&$('#mList').classList.contains('rsmode'));
+ };
  showPanel=function(n){ baseShow(n); cur=n; updTall(); };
  new MutationObserver(updTall).observe($('#choices'),{childList:true});
  const baseMenu=openMenu;
  openMenu=function(title,items){ baseMenu(title,items); $('#mList').classList.toggle('grid2',items.length>=4); };
  const baseRs=openRestore; openRestore=function(){ $('#mList').classList.remove('grid2'); return baseRs(); };
  const baseTp=openTopics; openTopics=function(f){ $('#mList').classList.remove('grid2'); return baseTp(f); };
- const keepBottom=el=>{ if(el) new MutationObserver(()=>{ el.scrollTop=el.scrollHeight; }).observe(el,{childList:true,characterData:true,subtree:true}); };
+ const keepBottom=el=>{
+   if(!el) return;
+   let follow=true;
+   el.addEventListener('scroll',()=>{follow=el.scrollHeight-el.clientHeight-el.scrollTop<24;},{passive:true});
+   new MutationObserver(()=>{
+     if(!el.textContent) follow=true;
+     if(follow) el.scrollTop=el.scrollHeight;
+   }).observe(el,{childList:true,characterData:true,subtree:true});
+ };
  keepBottom($('#dtext')); keepBottom($('#ctext'));
- /* 入力欄を閉じたあと、スマホのキーボードでずれた表示を戻す */
- $('#cin').addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==$('#cin')) window.scrollTo(0,0); },120));
+ /* viewport・HUD・safe-areaの実寸で修繕パネルの上限を決める。 */
+ const measureLayout=()=>{
+   const c=getComputedStyle(app);
+   app.style.setProperty('--app-inner-height',Math.max(0,app.clientHeight-parseFloat(c.paddingTop)-parseFloat(c.paddingBottom))+'px');
+   app.style.setProperty('--hud-height',$('.hud').getBoundingClientRect().height+'px');
+ };
+ new ResizeObserver(measureLayout).observe(app);
+ new ResizeObserver(measureLayout).observe($('.hud'));
+ measureLayout();
+ if(!CSS.supports('width','1cqw')){
+   new ResizeObserver(entries=>{
+     const {width,height}=entries[0].contentRect, w=Math.max(0,Math.min(width,height*.8));
+     stage.style.width=w+'px'; stage.style.height=(w*1.25)+'px';
+   }).observe($('#stageBox'));
+ }
+ // ピンチズームは維持し、入力中のキーボードによる縮小だけを扱う。
+ const vv=window.visualViewport;
+ let restingHeight=vv?vv.height:innerHeight, viewportFrame=0;
+ const updateViewport=()=>{
+   viewportFrame=0;
+   const focused=document.activeElement&&document.activeElement.matches('input,textarea');
+   const unzoomed=!vv||Math.abs(vv.scale-1)<.02;
+   const h=vv?vv.height:innerHeight;
+   if(!focused&&unzoomed) restingHeight=h;
+   const keyboard=!!focused&&unzoomed&&h<Math.max(restingHeight,document.documentElement.clientHeight)-80;
+   app.classList.toggle('keyboard-open',keyboard);
+   if(keyboard) app.style.setProperty('--app-height',h+'px');
+   else app.style.removeProperty('--app-height');
+ };
+ const queueViewport=()=>{if(!viewportFrame) viewportFrame=requestAnimationFrame(updateViewport);};
+ if(vv) vv.addEventListener('resize',queueViewport,{passive:true});
+ window.addEventListener('resize',queueViewport,{passive:true});
+ document.addEventListener('focusin',queueViewport);
+ document.addEventListener('focusout',queueViewport);
  showPanel($('.pane.on')?$('.pane.on').id:'pActions');
 })();
 
@@ -5449,7 +5524,7 @@ rule('prefTalk',31.5,null,(ctx)=>{ const pf=prefFind(ctx.t); if(!pf) return null
 /* =====================================================================
    RIG：上半身リグ（Kamisama ランタイム）で「girl」形態を描く
    ===================================================================== */
-const RIG={ok:false, ch:null, cv:null, ctx:null, view:[-150,-300,1020,1275], mark:null, markT:0, lookT:null, talkOn:false};
+const RIG={ok:false, ch:null, cv:null, ctx:null, view:[-150,-300,1020,1275], face:null, mark:null, markT:0, lookT:null, talkOn:false};
 const RIG_FACE={
  normal:['neutral'], happy:['happy','sparkle'], smug:['smile','twinkle'], laugh:['laugh','sparkle'], surprised:['surprised','bang'],
  scared:['scared','sweat'], angry:['angry','anger'], pout:['pout','puff'], bliss:['bliss','hearts'], eat:['eat','mogu'],
@@ -5539,16 +5614,20 @@ function rigToStage(x,y,space='head'){
 function rigFace(f){
   if(!RIG.ok) return;
   const d=RIG_FACE[f]||RIG_FACE.normal;
-  try{ RIG.ch.expression(d[0],{duration:.3}); }catch(_){ RIG.ch.expression('neutral'); }
+  // 同じ表情を続ける時は顔のアニメーションを最初からやり直さない。
+  if(RIG.face!==f){
+    try{ RIG.ch.expression(d[0],{duration:.3}); }catch(_){ RIG.ch.expression('neutral'); }
+    RIG.face=f;
+    if(f==='confused'&&!reduceMotion.matches) RIG.ch.play('tilt');
+  }
   RIG.mark=d[1]||null; RIG.markT=performance.now();
-  if(f==='confused') RIG.ch.play('tilt');
 }
 function rigTalk(on){ if(!RIG.ok) return; RIG.talkOn=on; RIG.ch.talk(!!on&&form==='girl'); }
 function rigLight(){ if(!RIG.ok) return; RIG.ch.setLighting(['morning','noon','evening','night'][phase()]||'noon',{duration:1.2}); }
 function rigDrawOverlays(now){
   const ctx=RIG.ctx; const layers=[];
   if(curAcc && RIG_ACC[curAcc]) layers.push({img:rigImg('acc_'+curAcc,RIG_ACC[curAcc]),a:1,dy:0});
-  if(RIG.mark && RIG_MARKS[RIG.mark]){ const t=(now-RIG.markT)/1000; layers.push({img:rigImg('mk_'+RIG.mark,'<g transform="translate(26 14)">'+RIG_MARKS[RIG.mark]+'</g>'),a:Math.min(1,t/.25),dy:Math.sin(t*3)*4}); }
+  if(RIG.mark && RIG_MARKS[RIG.mark]){ const t=(now-RIG.markT)/1000; layers.push({img:rigImg('mk_'+RIG.mark,'<g transform="translate(26 14)">'+RIG_MARKS[RIG.mark]+'</g>'),a:reduceMotion.matches?1:Math.min(1,t/.25),dy:reduceMotion.matches?0:Math.sin(t*3)*4}); }
   if(RIG.mark==='drowsy'){
     const M0=rigHeadM(), t=(now-RIG.markT)/1000, ctx2=RIG.ctx, fade=Math.min(1,t/.4);
     ctx2.save(); ctx2.setTransform(M0[0],M0[1],M0[2],M0[3],M0[4],M0[5]);
