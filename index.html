@@ -259,7 +259,7 @@ button{font:inherit;color:inherit}
 html,body{overflow:hidden;overscroll-behavior:none}
 /* 高さとsafe-areaをアプリのborder-box内で一元管理する */
 :root{padding:0}
-#app{height:100vh;height:var(--app-height,100vh);min-height:0;overflow:hidden;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+#app{position:fixed;top:var(--viewport-top,0px);left:0;right:0;height:100vh;height:var(--app-height,100vh);min-height:0;overflow:hidden;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
 @supports(height:100dvh){#app{height:var(--app-height,100dvh)}}
 #app>*{min-width:0}
 .hud{flex:none;padding:8px 0 6px}
@@ -323,7 +323,8 @@ html,body{overflow:hidden;overscroll-behavior:none}
 .rs-go{padding:8px}
 
 /* はじめの画面・エンディング */
-#ov{overflow-y:auto}
+#ov{top:var(--viewport-top,0px);bottom:auto;height:100vh;height:var(--app-height,100vh);overflow-y:auto;flex-direction:column;justify-content:flex-start}
+@supports(height:100dvh){#ov{height:var(--app-height,100dvh)}}
 
 /* 背の低い画面 */
 @media (max-height:700px){
@@ -359,10 +360,34 @@ button{touch-action:manipulation}
   .stageBox{grid-column:1;grid-row:1 / 3;height:100%;padding-block:8px}
   .panel,#app.tall .panel,#app.repair .panel{grid-column:2;grid-row:2;height:auto;max-height:none;transition:none}
 }
-/* キーボード表示中は会話の表示・入力領域を優先する */
-#app.keyboard-open{display:flex}
-#app.keyboard-open .stageBox{display:none}
-#app.keyboard-open .panel{height:auto;max-height:none;flex:1;min-height:0}
+/* キーボード中も舞台を残し、本文だけをスクロールできる配置にする。
+   max-heightメディアクエリはiOSのキーボードでは変わらないため、実測の高さで切り替える。 */
+#app.keyboard-open{display:flex;padding-top:max(0px,calc(env(safe-area-inset-top,0px) - var(--viewport-top,0px)));padding-bottom:0}
+#app.keyboard-open .hud{display:none}
+#app.keyboard-open .stageBox{display:flex;flex:0 0 min(28%,150px);height:auto;padding:0;grid-area:auto}
+#app.keyboard-open .panel{height:auto;max-height:none;flex:1;min-height:0;padding:12px 0 8px;overflow-y:auto;overscroll-behavior-y:contain;grid-area:auto}
+#app.keyboard-open .cdlg{min-height:64px;padding:14px 12px}
+#app.keyboard-open #ctext{font-size:15px;line-height:1.5}
+#app.keyboard-open #cin{min-height:44px;font-size:16px}
+#app.keyboard-open .crow,#app.keyboard-open .crow2{flex-shrink:0}
+#app.keyboard-short .stageBox{flex-basis:min(18%,64px)}
+#app.keyboard-short .cdlg{min-height:52px;padding:12px}
+#app.keyboard-wide{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,390px);grid-template-rows:minmax(0,1fr);column-gap:16px;max-width:1000px}
+#app.keyboard-wide .stageBox{grid-column:1;grid-row:1;height:100%;padding-block:6px}
+#app.keyboard-wide .panel{grid-column:2;grid-row:1}
+/* おはなし中は空いた横幅も使う。入力と操作は下の全幅に固定し、本文のみをスクロール。 */
+#app.keyboard-open.chat-active{display:grid;grid-template-columns:minmax(80px,32%) minmax(0,1fr);grid-template-rows:minmax(64px,1fr) auto auto;gap:8px 12px;padding-top:max(12px,calc(env(safe-area-inset-top,0px) - var(--viewport-top,0px)));padding-bottom:8px;overflow-y:auto}
+#app.keyboard-open.chat-active .panel,#app.keyboard-open #pChat.on{display:contents}
+#app.keyboard-open.chat-active .stageBox{grid-column:1;grid-row:1;height:100%;padding:0}
+#app.keyboard-open.chat-active .cdlg{grid-column:2;grid-row:1;min-width:0;margin:0}
+#app.keyboard-open.chat-active .crow{grid-column:1 / -1;grid-row:2}
+#app.keyboard-open.chat-active .crow2{grid-column:1 / -1;grid-row:3;margin-top:0}
+#app.keyboard-open.chat-active .bubble{display:none}
+:root.keyboard-open #ov{padding-top:max(12px,calc(env(safe-area-inset-top,0px) - var(--viewport-top,0px)));padding-bottom:12px;scroll-padding-block:12px}
+:root.keyboard-open #ov .card{padding:16px 18px}
+:root.keyboard-open #ov .card h1{font-size:26px}
+:root.keyboard-open #ov .card .seal{margin-bottom:8px}
+:root.keyboard-open #ov .card p{line-height:1.6;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -2601,7 +2626,7 @@ $('#cin').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing&&e.
 $('#cin').addEventListener('input',()=>armIdle());
 $('#cBack').onclick=closeChat;
 $('#cTopic').onclick=()=>{ if(!cPlaying) act('topics'); };
-$('#cAct').onclick=()=>{ const i=$('#cin'); if(!/^\*/.test(i.value)) i.value='*'+i.value; i.focus(); if(!/\*$/.test(i.value)){ i.value+='*'; i.setSelectionRange(i.value.length-1,i.value.length-1); } };
+$('#cAct').onclick=()=>{ const i=$('#cin'); if(!/^\*/.test(i.value)) i.value='*'+i.value; i.focus({preventScroll:true}); if(!/\*$/.test(i.value)){ i.value+='*'; i.setSelectionRange(i.value.length-1,i.value.length-1); } };
 
 /* chat-side gains (daily caps) */
 function cg(g={}){
@@ -3699,8 +3724,8 @@ rule('polarity',11,null,(ctx)=>{ const p=pol(ctx.t); if(!p) return null;
 /* =====================================================================
    キャッチボール：返答のあとに問い返し → 答えで分岐（さらに連鎖も）
    ===================================================================== */
-const YES=/^(うん|うむ|はい|はーい|そう|ええ|おう|もちろん|もち|yes|いいよ|いいね|ある|あります|あるよ|いる|います|いるよ|する|します|するよ|した|しました|好き|すき|大好き|だいすき|楽し|たのし|行った|いった|見た|みた|知って|しって|わかる|分かる|行く|いく|来る|くる|くるよ|来るよ|たぶん|多分|まあね|まぁね|それな|そうだね|そうだよ|だね|だよ|当たり|あたり|正解|せいかい)/;
-const NO=/^(いや|いいえ|ううん|いえ|ない|ないよ|ないです|まだ|別に|べつに|違|ちが|全然|ぜんぜん|嫌|きらい|苦手|にがて|知らない|しらない|分からない|わからない|わかんない|no|ノー|のー|微妙|びみょう|そうでもない|そんなに|あんまり|あまり)/;
+const YES=/^(?:うん+|うむ+|はい+|は[ー〜～ぁあ]*い+|ええ(?:、?そう|ですね|ですよ)?|そう(?:そう|だ(?:ね|よ|な|と思う|と思います|ったら)?|じゃ|なの|ですよね?|ですね|かも|思う|いうこと|その通り|そのとおり)?|おう|ああ|もちろん(?:です|だよ|だね)?|もち|yes|ok(?:ay)?|おっけー|おけ|いい(?:よ|です|ね|と思う|と思います|んじゃない|んじゃないか)|たしかに(?:ね|そう)?|確かに(?:ね|そう)?|なるほど(?:ね|です)?|その通り|そのとおり|賛成|さんせい|異論ない|いろんない|問題ない|もんだいない|大丈夫|だいじょうぶ|ある(?:よ|ね|です|ます)?|いる(?:よ|ね|です|ます)?|する(?:よ|ね|です|ます)?|した(?:よ|ね|です|ました)?|好き|すき|大好き|だいすき|楽し|たのし|行った|いった|見た|みた|知って|しって|わかる|分かる|行く|いく|来る|くる|たぶん|多分|まあ(?:ね|そう)|まぁ(?:ね|そう)|それな|だね|だよ|当たり|あたり|正解|せいかい)/;
+const NO=/^(?:(?:いや|いいえ|ううん|いえ|ない|ないよ|ないです|まだ|別に|べつに|違|ちが|全然|ぜんぜん|嫌|きらい|苦手|にがて|知らない|しらない|分からない|わからない|わかんない|no|ノー|のー|微妙|びみょう|そう(?:でもない|じゃない|じゃなく|ではない|ではなく|とも言えない|いうわけではない)|そんなに|あんまり|あまり)|(?:うん|うむ|はい|ええ|そう)(?:、|,| )+(?:違|ちが|いや|嫌|そうじゃない|そうではない))/;
 function ansType(t){
   if(NO.test(t) || /(ない|なかった|ません|ないな|ないよ|ないかも)[。！!、…w笑]*$/.test(t)) return 'n';
   if(YES.test(t)) return 'y';
@@ -5464,6 +5489,7 @@ rule('prefTalk',31.5,null,(ctx)=>{ const pf=prefFind(ctx.t); if(!pf) return null
  const baseShow=showPanel;
  let cur='pActions';
  const updTall=()=>{
+   app.classList.toggle('chat-active',cur==='pChat');
    app.classList.toggle('tall',cur==='pChat'||cur==='pMenu'||(cur==='pDialog'&&(chatMode||$('#choices').children.length>0)));
    app.classList.toggle('repair',cur==='pMenu'&&$('#mList').classList.contains('rsmode'));
  };
@@ -5498,25 +5524,86 @@ rule('prefTalk',31.5,null,(ctx)=>{ const pf=prefFind(ctx.t); if(!pf) return null
      stage.style.width=w+'px'; stage.style.height=(w*1.25)+'px';
    }).observe($('#stageBox'));
  }
- // ピンチズームは維持し、入力中のキーボードによる縮小だけを扱う。
- const vv=window.visualViewport;
- let restingHeight=vv?vv.height:innerHeight, viewportFrame=0;
- const updateViewport=()=>{
-   viewportFrame=0;
-   const focused=document.activeElement&&document.activeElement.matches('input,textarea');
-   const unzoomed=!vv||Math.abs(vv.scale-1)<.02;
-   const h=vv?vv.height:innerHeight;
-   if(!focused&&unzoomed) restingHeight=h;
-   const keyboard=!!focused&&unzoomed&&h<Math.max(restingHeight,document.documentElement.clientHeight)-80;
-   app.classList.toggle('keyboard-open',keyboard);
-   if(keyboard) app.style.setProperty('--app-height',h+'px');
-   else app.style.removeProperty('--app-height');
- };
- const queueViewport=()=>{if(!viewportFrame) viewportFrame=requestAnimationFrame(updateViewport);};
- if(vv) vv.addEventListener('resize',queueViewport,{passive:true});
- window.addEventListener('resize',queueViewport,{passive:true});
- document.addEventListener('focusin',queueViewport);
- document.addEventListener('focusout',queueViewport);
+  /* iOSでは100dvhとレイアウトviewportがキーボードに合わせて縮まない。
+     fixed要素のtopをoffsetTop、高さをheightに合わせ、Safariの入力時のパンにも追従する。
+     ページ全体をscrollTo/scrollIntoViewで引き戻すとSafariと競合するので行わない。 */
+  const root=document.documentElement, vv=window.visualViewport;
+  const hasTouch=navigator.maxTouchPoints>0||matchMedia('(any-pointer:coarse)').matches;
+  let restingHeight=vv?vv.height:window.innerHeight;
+  let layoutWidth=root.clientWidth, keyboardOpen=false, viewportFrame=0;
+  let revealFocused=false, lastHeight=0, settleTimers=[];
+  const isTextInput=el=>el instanceof HTMLElement&&
+    el.matches('input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea,[contenteditable=true]');
+  const setPixel=(name,value)=>{
+    const px=Math.round(value*100)/100+'px';
+    if(root.style.getPropertyValue(name)!==px) root.style.setProperty(name,px);
+  };
+  const revealOverlayInput=()=>{
+    const el=document.activeElement, ov=$('#ov');
+    if(!isTextInput(el)||!ov.classList.contains('on')||!ov.contains(el)) return;
+    const field=el.getBoundingClientRect(), box=ov.getBoundingClientRect();
+    const next=el.nextElementSibling;
+    const bottom=next&&next.matches('button')?next.getBoundingClientRect().bottom:field.bottom;
+    const topLimit=box.top+12, bottomLimit=box.bottom-12;
+    // 入力欄と「境内に入る」を優先。スクロールするのはオーバーレイの内側だけ。
+    if(field.top<topLimit) ov.scrollTop+=field.top-topLimit;
+    else if(bottom>bottomLimit) ov.scrollTop+=Math.min(bottom-bottomLimit,field.top-topLimit);
+  };
+  const updateViewport=()=>{
+    viewportFrame=0;
+    // ピンチズーム中は最後の等倍レイアウトを維持し、拡大・パンをブラウザに任せる。
+    if(vv&&Math.abs(vv.scale-1)>.02) return;
+    const h=vv?vv.height:window.innerHeight;
+    if(!Number.isFinite(h)||h<=0) return;
+    const focused=isTextInput(document.activeElement);
+    const width=root.clientWidth;
+    if(Math.abs(width-layoutWidth)>1){
+      // 回転前の縦長画面を基準にしない。表示中のキーボードは新しいlayout高と比較する。
+      restingHeight=keyboardOpen?Math.max(h,root.clientHeight,window.innerHeight):h;
+      layoutWidth=width;
+    }
+    const threshold=keyboardOpen?48:Math.max(80,restingHeight*.15);
+    const occluded=restingHeight-h>threshold;
+    const keyboard=(focused||keyboardOpen)&&occluded&&
+      (hasTouch||!!vv&&root.clientHeight-h>threshold);
+    // blurだけでは解除しない。閉じるアニメーションで実際の表示高が戻るまで配置を保つ。
+    // 開くアニメーション中に数pxずつ縮む高さを基準へ取り込むと、開閉判定ができなくなる。
+    if(!keyboard&&!focused) restingHeight=h;
+    else restingHeight=Math.max(restingHeight,h);
+    const changed=keyboard!==keyboardOpen;
+    keyboardOpen=keyboard;
+    setPixel('--app-height',h);
+    setPixel('--viewport-top',vv?Math.max(0,vv.offsetTop):0);
+    root.classList.toggle('keyboard-open',keyboard);
+    app.classList.toggle('keyboard-open',keyboard);
+    app.classList.toggle('keyboard-short',keyboard&&h<260);
+    app.classList.toggle('keyboard-wide',keyboard&&width>=560);
+    const heightChanged=Math.abs(h-lastHeight)>.5;
+    lastHeight=h;
+    if(revealFocused||changed||heightChanged){ revealFocused=false; revealOverlayInput(); }
+  };
+  const queueViewport=()=>{if(!viewportFrame) viewportFrame=requestAnimationFrame(updateViewport);};
+  const resized=queueViewport;
+  const settleViewport=e=>{
+    if(e&&e.type==='focusin') revealFocused=true;
+    settleTimers.forEach(clearTimeout);
+    resized();
+    // Safariのfocus/blur直後は古い寸法が返る場合がある。常時ポーリングはしない。
+    settleTimers=[80,300,600].map(ms=>setTimeout(resized,ms));
+  };
+  if(vv){
+    vv.addEventListener('resize',resized,{passive:true});
+    vv.addEventListener('scroll',queueViewport,{passive:true});
+    vv.addEventListener('scrollend',queueViewport,{passive:true});
+  }
+  window.addEventListener('resize',resized,{passive:true});
+  window.addEventListener('scroll',queueViewport,{passive:true});
+  window.addEventListener('orientationchange',settleViewport,{passive:true});
+  window.addEventListener('pageshow',settleViewport,{passive:true});
+  document.addEventListener('focusin',settleViewport);
+  document.addEventListener('focusout',settleViewport);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden) settleViewport();});
+  updateViewport();
  showPanel($('.pane.on')?$('.pane.on').id:'pActions');
 })();
 
@@ -7349,9 +7436,9 @@ function showStart(){
   const ov=$('#ov');
   ov.innerHTML=`<div class="card"><h1>カミサマそだて</h1><div class="seal">御神木の社</div><p>親戚の家からの帰り道、ふと目に留まった寂れた神社。そこには、忘れられた神さまがひとり。甘味をあげて、おはなしして、社をもう一度にぎやかにしよう。</p><label for="nm">あなたの名前</label><input id="nm" maxlength="12" autocomplete="off" placeholder="人の子"><button class="btn" id="go">境内に入る</button></div>`;
   ov.classList.add('on');
-  setTimeout(()=>$('#nm').focus(),50);
-  const go=()=>{ S.name=($('#nm').value.trim()||'人の子').slice(0,12); S.started=true; save(); ov.classList.remove('on'); renderHUD(); play(introLines()); };
-  $('#go').onclick=go; $('#nm').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+  setTimeout(()=>{ if(matchMedia('(pointer:fine)').matches) $('#nm')?.focus({preventScroll:true}); },50);
+  const go=()=>{ const nm=$('#nm'); S.name=(nm.value.trim()||'人の子').slice(0,12); nm.blur(); S.started=true; save(); ov.classList.remove('on'); renderHUD(); play(introLines()); };
+  $('#go').onclick=go; $('#nm').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){ e.preventDefault(); go(); } });
 }
 function introLines(){
   const guess=Math.random()<.5?'雄':'雌';
@@ -7388,7 +7475,7 @@ function introLines(){
 function showEnding(){
   const ov=$('#ov');
   ov.innerHTML=`<div class="card"><div class="seal">奉納祭</div><h1>神社再興</h1><p>忘れられた社に、ふたたび人の子の足音が戻ってきた。<br>おしまい——でも、カミサマの毎日はまだつづきます。</p><button class="btn" id="cont">境内にもどる</button></div>`;
-  ov.classList.add('on'); setTimeout(()=>$('#cont').focus(),50);
+  ov.classList.add('on'); setTimeout(()=>$('#cont')?.focus({preventScroll:true}),50);
   $('#cont').onclick=()=>ov.classList.remove('on');
 }
 
@@ -7400,5 +7487,3 @@ else setTimeout(()=>bubble(rnd(['おお、{name}！ よう来た！','むふー�
 </script>
 </body>
 </html>
-
-</body></html>
