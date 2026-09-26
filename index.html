@@ -2943,9 +2943,9 @@ function respond(raw,hay){
   const pre=[];
   if(hay) pre.push(...P(hayato(ctx)));
   let res=null;
-  if(C.expect) res=handleExpect(ctx);
+  if(C.expect && !planPreempt(ctx)) res=handleExpect(ctx);
   if(!res && C.leaving===1) res=handleLeave(ctx);
-  if(!res) res=runRules(ctx);
+  if(!res) res=planRespond(ctx);
   if(!res) res={id:'fallback',...norm2(fallback(ctx))};
   if(C.tf && res.id!=='compl' && !res.keepForm){ pre.push(...P('@normal:¶n:ぽんっ、と小さな煙を立てて、少女はいつもの姿に戻った。¶'+pick('rev',REVERT))); C.tf=0; }
   cg(Object.assign({e:1},res.g||{}));
@@ -2954,6 +2954,7 @@ function respond(raw,hay){
   let out=pre.concat(P(res.b,res.v||{}));
   const askId=threadAfter(res);
   if(askId && THREADS[askId]){ C.expect={t:'th',id:askId}; C.lastAskAt=C.cnt; C.askedToday=C.askedToday||{}; C.askedToday[askId]=S.day; out=out.concat(P(THREADS[askId].q)); }
+  ctxRecord(ctx,res,out);
   return out;
 }
 function norm2(r){ if(r==null) return null; if(typeof r==='string'||Array.isArray(r)) return {b:r}; return r; }
@@ -3724,10 +3725,18 @@ rule('polarity',11,null,(ctx)=>{ const p=pol(ctx.t); if(!p) return null;
 /* =====================================================================
    キャッチボール：返答のあとに問い返し → 答えで分岐（さらに連鎖も）
    ===================================================================== */
-const YES=/^(?:うん+|うむ+|はい+|は[ー〜～ぁあ]*い+|ええ(?:、?そう|ですね|ですよ)?|そう(?:そう|だ(?:ね|よ|な|と思う|と思います|ったら)?|じゃ|なの|ですよね?|ですね|かも|思う|いうこと|その通り|そのとおり)?|おう|ああ|もちろん(?:です|だよ|だね)?|もち|yes|ok(?:ay)?|おっけー|おけ|いい(?:よ|です|ね|と思う|と思います|んじゃない|んじゃないか)|たしかに(?:ね|そう)?|確かに(?:ね|そう)?|なるほど(?:ね|です)?|その通り|そのとおり|賛成|さんせい|異論ない|いろんない|問題ない|もんだいない|大丈夫|だいじょうぶ|ある(?:よ|ね|です|ます)?|いる(?:よ|ね|です|ます)?|する(?:よ|ね|です|ます)?|した(?:よ|ね|です|ました)?|好き|すき|大好き|だいすき|楽し|たのし|行った|いった|見た|みた|知って|しって|わかる|分かる|行く|いく|来る|くる|たぶん|多分|まあ(?:ね|そう)|まぁ(?:ね|そう)|それな|だね|だよ|当たり|あたり|正解|せいかい)/;
-const NO=/^(?:(?:いや|いいえ|ううん|いえ|ない|ないよ|ないです|まだ|別に|べつに|違|ちが|全然|ぜんぜん|嫌|きらい|苦手|にがて|知らない|しらない|分からない|わからない|わかんない|no|ノー|のー|微妙|びみょう|そう(?:でもない|じゃない|じゃなく|ではない|ではなく|とも言えない|いうわけではない)|そんなに|あんまり|あまり)|(?:うん|うむ|はい|ええ|そう)(?:、|,| )+(?:違|ちが|いや|嫌|そうじゃない|そうではない))/;
+// 前方一致で語尾・繰り返しを含める（「はいはい」「そうですね」等の個別登録は不要）。
+const YES=/^(?:はい|うん|そう|うむ|は[ー〜～ぁあ]+い|ええ|おう|ああ|もちろん|もち|yes|ok|おっけー|おーけー|おけ|いい(?:よ|です|ね|と思|んじゃない)|たしかに|確かに|なるほど|その(?:通り|とおり)|賛成|さんせい|同意|どうい|了解|りょうかい|承知|しょうち|異論(?:は|が)?ない|いろん(?:は|が)?ない|問題(?:は|が)?ない|もんだい(?:は|が)?ない|大丈夫|だいじょうぶ|ある|あります|いる|います|する|し(?:た|ます|ました)|好き|すき|大好き|だいすき|楽し|たのし|行った|いった|見た|みた|知って|しって|わかる|分かる|わかりました|分かりました|行く|いく|来る|くる|たぶん|多分|ま[あぁ](?:ね|そう)|それな|だね|だよ|当たり|あたり|正解|せいかい)/;
+const NO=/^(?:いや|いいえ|ううん|いえ|ない|まだ|別に|べつに|違|ちが|全然|ぜんぜん|嫌|きらい|苦手|にがて|知らない|しらない|分からない|わからない|わかんない|no|のー|微妙|びみょう|そう(?:(?:でも|じゃ|では)(?:ない|なく|ありません)|とも(?:言|い)えない|いうわけ(?:では|じゃ)ない)|そんなに|あんまり|あまり)/;
+// 否定形でも同意を表す定型句。文全体を限定し、後続の否定は打ち消さない。
+const AGREE_NEGATIVE_FORM=/^(?:(?:問題|もんだい|異論|いろん)(?:は|が)?(?:ない|ありません)|いいんじゃない)(?:です)?(?:よ|ね|な)?[。！!、,…w笑〜～\s]*$/;
 function ansType(t){
-  if(NO.test(t) || /(ない|なかった|ません|ないな|ないよ|ないかも)[。！!、…w笑]*$/.test(t)) return 'n';
+  t=norm(t.normalize('NFKC'));
+  // 「うんうん、違う」等は相づちの後ろも調べる。
+  const reply=t.replace(/^(?:(?:はい|うん|うむ|ええ|そう)+[、,。!！\s]+)+/,'');
+  if(NO.test(t) || NO.test(reply)) return 'n';
+  if(AGREE_NEGATIVE_FORM.test(reply)) return 'y';
+  if(/(?:ない|なかった|ません|違う|ちがう|無理|むり|だめ)(?:です|でした|んです)?(?:よ|ね|な|かも)?[。！!、,…w笑〜～\s]*$/.test(reply)) return 'n';
   if(YES.test(t)) return 'y';
   const p=pol(t); if(p>0) return 'y'; if(p<0) return 'n';
   return 'o';
@@ -5355,6 +5364,23 @@ function lexSay(hit,ctx){
   if(e.fn) return {id:'lex_'+e.id,b:e.fn()};
   return {id:'lex_'+e.id,b:pick('lex_'+e.id,e.say)};
 }
+/* 問いかけへの答えが「知っている言葉」だったとき、辞書の一言と問いへの返答を二重にしない。
+   返答が答えを繰り返すだけの相づち（「〇〇……？」「〇〇か。」等）で始まるなら、その相づちだけを辞書の一言に差し替える。
+   そうでなければ、問いへの返答だけを返す。 */
+function lexEcho(s,k){
+  if(!s||!k) return false;
+  const t=hira(s).replace(/^[「『]/,''), kk=hira(k);
+  if(!t.startsWith(kk)) return false;
+  const rest=t.slice(kk.length).replace(/^[」』]/,'');
+  return /^[…。、！!？?\s]*(か|とな|じゃと|じゃな|とは|とな|か……|ときたか|、とな)?[…。、！!？?\s]*$/.test(rest);
+}
+function lexMerge(sh,r,ctx){
+  const o=Object.assign({},r); const k=ansKey(ctx);
+  const beats=P(o.b,Object.assign({k},o.v||{}));
+  const i=beats.findIndex(x=>x.s!=null||x.n!=null);
+  if(i>=0 && beats[i].s!=null && lexEcho(beats[i].s,k)){ o.b=[].concat(beats.slice(0,i),P(sh),beats.slice(i+1)); o.v=null; o.lexMerged=1; return o; }
+  o.b=beats; o.v=null; o.lexDropped=1; return o;
+}
 function lexShort(hit){
   const e=hit.e;
   if(e.id==='self') return 'smug:わしのことか！ ……むふー、そなたの答えにわしが出てくるとは、よい心がけじゃ！';
@@ -5452,7 +5478,7 @@ const recipStrip=b=>b.replace(new RegExp('[、,。．！!\\s]*('+whoRe()+')(('+R
   const hit=ans.length<=16?lexFind(ans):null;
   if(hit){ const a=th.free?'o':ansType(ctx.tb);
    if(th.free||a==='o'){ const sh=lexShort(hit); const r=base(ctx);
-    if(r&&sh){ const o=Object.assign({},r); o.b=[].concat(P(sh),P(o.b,Object.assign({k:ansKey(ctx)},o.v||{}))); o.v=null; return o; }
+    if(r&&sh) return lexMerge(sh,r,ctx);
     return r; } }
   return base(ctx);
  };
@@ -7430,6 +7456,932 @@ IDLE_TALK.push(
   const b2=pfCapture; pfCapture=function(f,ctx,opt){ if(hard.some(re=>re.test(ctx.t||'')||re.test(hira(ctx.body||'')))) return null; return b2(f,ctx,opt); };
   const b3=handleExpect; handleExpect=function(ctx){ if(C.expect && hard.some(re=>re.test(ctx.t)||re.test(ctx.tb||''))){ C.expect=null; return null; } return b3(ctx); };
 })();
+
+
+/* ---- 知っている単語の取り違えを防ぐ ----
+   ・「いやほん」「はいしゃ」「そうじ」「うんどう」等、単語の頭が「いや／はい／そう／うん」と重なるだけのものを、肯定・否定と取らない
+   ・「でんしまねー」の中の「しまね」のように、長い言葉の一部を県名と取らない */
+function knownPrefixLen(x){
+  let best=0; const at0=re=>{ try{ const m=x.match(re); if(m&&m.index===0&&m[0].length>best) best=m[0].length; }catch(_){} };
+  for(const id in SW_KNOW) at0(SW_KNOW[id]);
+  for(const e of KNOWN) at0(e.re);
+  for(const md of MOD) at0(md.k);
+  for(const tr of TRENDS){ const tw=hira(tr.w); if(x.startsWith(tw)&&tw.length>best) best=tw.length; }
+  try{ for(const e of LK) at0(e[0]); }catch(_){}
+  try{ for(const f in PF) for(const e of PF[f].lex) at0(e[0]); }catch(_){}
+  try{ const pf=prefFind(x); if(pf){ const pw=hira(pf.w); if(x.startsWith(pw)&&pw.length>best) best=pw.length; } }catch(_){}
+  return best;
+}
+(()=>{ const base=ansType; ansType=function(t){
+  const x=hira(norm(String(t).normalize('NFKC'))).replace(/[。！!？?…、,\s]+$/,'').replace(/(です|でした|だよ|だね|だ|かな|とか|かも|よ|ね)$/,'');
+  if(x){ const kl=knownPrefixLen(x);
+    if(kl>=3 && x.length<=kl+4){ const ym=x.match(YES), nm=x.match(NO); const yl=ym?ym[0].length:0, nl=nm?nm[0].length:0;
+      if((yl||nl) && kl>Math.max(yl,nl)) return 'o'; } }
+  return base(t); }; })();
+(()=>{ const base=lexFind; lexFind=function(text,loose){
+  const r=base(text,loose); if(!r||r.e.id!=='pref') return r;
+  const x=hira(text||'').replace(/[「」『』"“”]/g,'').trim(); const pf=prefFind(x); const pl=pf?hira(pf.w).length:0;
+  const fit=m=>m&&m[0].length>pl&&(loose||x.length<=m[0].length+3);
+  for(const id in SW_KNOW){ const m=x.match(SW_KNOW[id]); if(fit(m)) return {e:{id:'sw',sw:id},w:m[0]}; }
+  for(const e of KNOWN){ const m=x.match(e.re); if(fit(m)) return {e,w:m[0]}; }
+  for(const tr of TRENDS){ const tw=hira(tr.w); if(tw.length>pl&&x.includes(tw)&&(loose||x.length<=tw.length+3)) return {e:{id:'trend',tr},w:tr.w}; }
+  for(const md of MOD){ const m=x.match(md.k); if(fit(m)) return {e:{id:'mod',md},w:md.w}; }
+  return r; }; })();
+
+
+/* 「甘いものは好きか？」に甘味の名で答えたら、好きという意味に受け取る */
+(()=>{ const th=THREADS.sweets_like; if(!th) return; const o0=th.o;
+  th.o=(ctx,k)=>{ const h=lexFind(ansKey(ctx)); if(h&&h.e.id==='sw'&&!SWEETS.find(z=>z.id===h.e.sw).bitter){ if(!C.mem.likes.includes(k)){ C.mem.likes.push(k); if(C.mem.likes.length>8) C.mem.likes.shift(); }
+      return {g:{m:5},b:'happy.hop:{k}か！ つまり、甘いものが好きということじゃな！ ¶smug:{k}の良さがわかるとは、そなた、なかなか通じゃのう。甘味を好む者に、悪い者はおらぬ！'}; }
+    return typeof o0==='function'?o0(ctx,k):o0; }; })();
+
+
+/* =====================================================================
+   会話拡張 第7弾：入力解析層 と 応答計画層
+   ---------------------------------------------------------------------
+   respond() の流れ（変更後）
+     ctx作成
+     ├ C.expect あり → planPreempt（直前の話を指す質問なら問いを抜ける）→ handleExpect
+     ├ 帰宅処理中 → handleLeave
+     ├ planRespond ← ここが新設（解析 → 計画 → 既存ルールへ委譲）
+     │    ・計画が「従来どおり」なら runRules(ctx) をそのまま呼ぶ
+     ├ fallback
+     └ 後処理 → ctxRecord（短期文脈を記録）
+   方針
+     ・話題の判定は既存の RULES（正規表現と優先度）と既存の辞書をそのまま使う
+     ・返答の文面は既存ルール・既存辞書に作らせる（新しく足すのはつなぎの一言だけ）
+     ・判断がつかないものは必ず runRules → fallback の従来経路へ
+   ===================================================================== */
+
+/* ---------- 短期文脈（C に最低限だけ追加） ---------- */
+C.cx=C.cx||{turns:[]};
+if(!Array.isArray(C.cx.turns)) C.cx.turns=[];
+
+/* ---------- 文法上の手がかり（内容ではなく、文の形だけを見る） ---------- */
+const AN_CONJ=/^(でも|だけど|けど|それと|あと|ところで|そういえば|それから|そして|で|じゃあ|まあ)[、,\s]*/;
+const AN_Q=[
+ ['why',/(なんで|何で|なぜ|何故|どうして)/],
+ ['what',/(何|なに|なん)(\?|？|$|なの|だろ|のこと|って)|って(何|なに|なん)|とは[?？]|どういう(こと|意味|いみ)|どんな(もの|物|の)/],
+ ['how',/(どう|どうやって|どのように)(なの|する|やる|だった|でした|すれば|したら|[?？]|$)/],
+ ['where',/(どこ|何処)/],['when',/(いつ)(?!も)/],['who',/(誰|だれ)/],
+ ['can',/(できる|出来る|できます|出来ます|られる)[?？]/],
+ ['opinion',/どう(思う|おもう|かな|感じ)|好き[?？]|嫌い[?？]/]
+];
+const AN_REF_HEAD=/^(それ|そっち|そこ|あれ|あそこ|その|あの|さっきの|今の|いまの|前の|まえの|さっき言(っ|い)た|さっきいった)/;
+const AN_REF_SET=/^(そこそこ|それなり|あれこれ|あれから|あれ以来|そのうち|その後|そのあと|その前|そのまえ|あの頃|あのころ|その日|そのひ|それな|それは(よかった|良かった|残念|大変|すごい|凄い|そう|どうも|ちょっと)|それでも|それで|それから|それじゃ|それより|それに|それと|それほど|それぞれ|そっか|その通り|そのとおり|あれ[?？!！。…]*$|あれっ|あれれ|あのね|あのさ|あの[、,]|あのー|そのまま)/;
+const AN_REF_BARE=/^(もっと|詳しく|くわしく|続き|つづき|なんで|何で|どうして|なぜ|ほんと|本当|まじ)/;
+const AN_REF_FILL=/(もっと|詳しく|くわしく|続き|つづき|なんで|何で|どうして|なぜ|ほんと|本当|まじ|を|は|に|って|教えて|おしえて|聞かせて|きかせて|知りたい|しりたい|ください|くれ|して|なの|なん|なのか|で|か|ね|よ|に|？|\?|！|!|。|…|、|\s)/g;
+const anIsRef=core=>{ if(AN_REF_SET.test(core)) return false; if(AN_REF_HEAD.test(core)) return true; return AN_REF_BARE.test(core)&&core.replace(AN_REF_FILL,'')===''; };
+const AN_PAST=/(た|だ|でした|ました|かった)(よ|ね|な|わ|けど|し|から)?[。！!…w笑]*$|昨日|きのう|さっき|この前|このまえ|先週|せんしゅう|去年|きょねん|昔|むかし/;
+const AN_FUT=/(明日|あした|あす|今度|こんど|来週|らいしゅう|来年|らいねん|予定|よてい|つもり|行く|いく|する)(よ|ね|な)?[。！!…]*$|明日|あした|来週|らいしゅう/;
+const AN_TOKAMI=/(かみさま|神様|君|きみ|あなた|お前|おまえ|そなた|かみちゃん)/;
+const AN_CRISIS=()=>[RULES.find(r=>r.id==='distress'),RULES.find(r=>r.id==='selfDeprec')].filter(Boolean).map(r=>r.re);
+const AN_COMMON=/^(人の子|ひとのこ|人間|にんげん|甘味|かんみ|神|かみ|境内|けいだい|社|やしろ|山|やま|鴉|からす|木|き)$/;
+const AN_GENERIC=new Set(['genWhat','genAgree','genVague','aizuchi','polarity','fallback','unk','unkRe','repeat','actgen','recipAfter']);
+
+/* 節に分ける */
+function anSplit(raw){
+  let s=String(raw).replace(/\s+/g,' ').trim();
+  s=s.replace(/(けれども|けれど|だけど|けど|のに)[、,]?/g,'$1\u0001')
+     .replace(/し[、,]/g,'し\u0001')
+     .replace(/([。！!？?]+)(?=[^。！!？?])/g,'$1\u0001')
+     .replace(/[、,](でも|それと|あと|ところで|そういえば|それから|そして)/g,'\u0001$1')
+     .replace(/([^\u0001]{2,}?)[、,](?=[^\u0001]{2,})/g,'$1\u0001');
+  return s.split('\u0001').map(x=>x.trim()).filter(x=>x.replace(/[。、！!？?…\s]/g,'').length>0).slice(0,4);
+}
+/* 既存 RULES を「話題分類器」として使う（正規表現と条件だけを見て、実行はしない） */
+function anProbe(c){
+  if(!RULES_SORTED) RULES_SORTED=RULES.slice().sort((a,b)=>(b.pri||0)-(a.pri||0));
+  for(const r of RULES_SORTED){ if(r.act||!r.re) continue;
+    try{ if(r.cond&&!r.cond(c)) continue; if(c.t.match(r.re)) return r; }catch(_){} }
+  return null;
+}
+/* 既存の辞書から、文中に出てくる言葉を拾う（位置つき） */
+function anTerms(text,prose){
+  const x=hira(String(text||'')); const out=[];
+  const add=(w,i,src,len)=>{ if(!w||(w.length<2&&!/[一-龠々]/.test(w))) return; if(SELF_RE&&SELF_RE.test(w)) return; if(S.name&&w===hira(S.name)) return; if(!out.some(o=>o.w===w)) out.push({w,i,src,len:len||w.length}); };
+  const scan=(re,src,disp)=>{ try{ const g=new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g'); let m; while((m=g.exec(x))){ if(!m[0]){ g.lastIndex++; continue; } if(prose&&(src==='known'||src==='mod')&&/^[ぁ-ゖー]{1,3}$/.test(m[0])) continue; add(disp||m[0],m.index,src,m[0].length); } }catch(_){} };
+  for(const id in SW_KNOW) scan(SW_KNOW[id],'sw');
+  for(const e of KNOWN) scan(e.re,'known');
+  for(const tr of TRENDS){ const tw=hira(tr.w); const i=x.indexOf(tw); if(i>=0) add(tr.w,i,'trend',tw.length); }
+  for(const md of MOD) scan(md.k,'mod');
+  if(!prose){ try{ for(const e of LK) scan(e[0],'lk'); }catch(_){}
+  try{ for(const f in PF) for(const e of PF[f].lex) scan(e[0],'lk'); }catch(_){} }
+  try{ const m=x.match(GALRE); if(m) add('山姥ぎゃる',m.index,'gal',m[0].length); }catch(_){}
+  try{ const pf=prefFind(x); if(pf){ let i=x.indexOf(hira(pf.w)); let L=hira(pf.w).length; if(i<0){ i=x.indexOf(pf.p.n); L=pf.p.n.length; } add(pf.p.n,i<0?0:i,'pref',L); } }catch(_){}
+  const W={trend:3,sw:3,mod:3,gal:3,pref:3,lk:2,known:1};
+  for(const o of out){ o.wt=(W[o.src]||1)-(AN_COMMON.test(o.w)?2:0); }
+  out.sort((a,b)=>a.i-b.i);
+  /* 長い語に含まれる短い語は捨てる */
+  return out.filter(o=>!out.some(p=>p!==o&&p.len>o.len&&p.i<=o.i&&p.i+p.len>=o.i+o.len));
+}
+function anClause(text,idx,prevText){
+  const t=norm(text), body=text;
+  const c={raw:text,t,act:false,body,tb:t,kw:kwOf(body)};
+  const core=t.replace(AN_CONJ,'');
+  const cc=Object.assign({},c,{t:core,tb:core,body:body.replace(AN_CONJ,'')});
+  const rule=anProbe(cc);
+  const q=AN_Q.find(([k,re])=>re.test(core)); const isQ=/[?？]$/.test(core)||!!q;
+  return {
+    text:body.replace(AN_CONJ,''), ctx:cc, rule:rule?{id:rule.id,pri:rule.pri||0}:null,
+    terms:anTerms(core), pol:anPol(core),
+    tense:AN_PAST.test(core)?'past':AN_FUT.test(core)?'future':'present',
+    qtype:isQ?(q?q[0]:'yn'):null,
+    toKami:AN_TOKAMI.test(core)&&!SUBJ.test(core),
+    self:SUBJ.test(core),
+    ref:anIsRef(core),
+    contrast:idx>0&&/(けど|けれど|けれども|だけど|のに)$/.test(norm(prevText||''))||/^(でも|だけど|けど)/.test(t),
+    yn:ansType(core)
+  };
+}
+/* あいさつ・お礼・相づちなど「前置き」になりやすいルール（既存ルールに代表的な言い方を読ませて調べる） */
+let AN_LIGHT=null;
+function anLight(){ if(AN_LIGHT) return AN_LIGHT; AN_LIGHT=new Set();
+  for(const w of ['おはよう','こんにちは','こんばんは','やっほー','ありがとう','どうも','うん','へえ','なるほど','ただいま','おかえり','久しぶり'])
+    { const r=anProbe({raw:w,t:norm(w),tb:norm(w),body:w,act:false,kw:''}); if(r) AN_LIGHT.add(r.id); }
+  return AN_LIGHT; }
+/* 既存の感情判定（pol）に、回復・安堵の言い方だけ補って使う（pol 本体はそのまま） */
+const AN_EXTRA_P=/元気(出|で|に)|げんき(で|に)|ほっと|安心|あんしん|癒さ|いやさ|落ち着|おちつ|すっきり|報われ|むくわれ|救われ|すくわれ/;
+const anPol=t=>pol(t)||(AN_EXTRA_P.test(t||'')?1:0);
+/* 入力解析層 */
+function analyze(ctx){
+  const parts=anSplit(ctx.body);
+  const cl=parts.map((p,i)=>anClause(p,i,parts[i-1]));
+  const all=cl.length?cl:[anClause(ctx.body,0,'')];
+  const main=all[all.length-1];
+  const whole=anProbe(Object.assign({},ctx,{t:ctx.t,tb:ctx.tb}));
+  return {
+    raw:ctx.raw, clauses:all, compound:all.length>=2, whole:whole?{id:whole.id,pri:whole.pri||0}:null,
+    topics:[...new Set(all.map(c=>c.rule&&c.rule.id).filter(Boolean))],
+    terms:all.flatMap(c=>c.terms.map(x=>x.w)),
+    pol:all.reduce((a,c)=>a+c.pol,0),
+    tense:main.tense, qtype:all.map(c=>c.qtype).filter(Boolean).pop()||null,
+    toKami:all.some(c=>c.toKami), ref:all.length===1&&all[0].ref&&!all[0].terms.some(x=>x.src!=='lk'),
+    crisis:AN_CRISIS().some(re=>re.test(ctx.t)||re.test(ctx.tb)),
+    yn:ansType(ctx.tb)
+  };
+}
+
+/* ---------- 短期文脈：直前の話題の候補 ---------- */
+function cxLast(){ return C.cx.turns[C.cx.turns.length-1]||null; }
+function cxFocus(pref){
+  const L=cxLast(); if(!L||C.cnt-L.cnt>3) return null;
+  const pool=[].concat((L.keys||[]).map(w=>({w,wt:4,from:'kami'})),(L.kamiT||[]).map(o=>({w:o.w,wt:o.wt,src:o.src,from:'kami'})),(L.userT||[]).map(o=>({w:o.w,wt:o.wt-0.5,src:o.src,from:'user'})));
+  if(!pool.length) return null;
+  const uw=new Set((L.userT||[]).map(o=>o.w)); for(const o of pool) if(o.from==='kami'&&uw.has(o.w)) o.wt+=2;
+  if(pref==='place'){ const pl=pool.find(o=>o.src==='pref'); if(pl) return pl; }
+  let best=null; for(const o of pool){ if(!best||o.wt>best.wt) best=o; } return best;
+}
+function ctxRecord(ctx,res,out){
+  try{
+    const said=out.filter(x=>x.s!=null).map(x=>x.s).join(' ');
+    const keys=[]; if(res&&res.v) for(const k in res.v){ const v=res.v[k]; if(typeof v==='string'&&v.length>=2&&v.length<=12&&!/[{}¶]/.test(v)&&k!=='you'&&anTerms(v,true).length) keys.push(anTerms(v,true)[0].w); }
+    const kT=anTerms(said,true).slice(0,4), uT=anTerms(ctx.t).slice(0,3);
+    const turn={cnt:C.cnt,u:String(ctx.t).slice(0,40),rule:res&&res.id||'',keys:keys.slice(0,2),kamiT:kT.map(o=>({w:o.w,wt:o.wt,src:o.src})),userT:uT.map(o=>({w:o.w,wt:o.wt,src:o.src})),user:uT.map(x=>x.w),kami:kT.map(x=>x.w)};
+    C.cx.turns.push(turn); while(C.cx.turns.length>4) C.cx.turns.shift();
+  }catch(_){}
+}
+
+/* ---------- 応答計画層 ---------- */
+function planOf(A){
+  if(A.crisis) return {route:'legacy',why:'crisis'};
+  /* 直前の話を指すだけの発話（「それって何？」「もっと詳しく」「なんで？」「さっきの話だけど」「それ好き」等） */
+  if(A.ref){ const f=cxFocus(/^(そこ|あそこ|そっち)/.test(A.clauses[0].ctx.t)?'place':null); if(f) return {route:'ref',focus:f,clause:A.clauses[0],why:'ref'}; return {route:'legacy',why:'ref-nofocus'}; }
+  /* 複合入力：節が2つ以上あり、節ごとに話題の手がかりがあるとき（最終判断は既存処理の試行で行う） */
+  if(A.compound){
+    const hint=A.clauses.filter(c=>(c.rule&&!AN_GENERIC.has(c.rule.id))||c.pol!==0||c.terms.length);
+    if(hint.length>=2) return {route:'compound',why:'compound'};
+  }
+  return {route:'legacy',why:'default'};
+}
+
+/* 状態を丸ごと退避して、既存ルールを「試しに」動かす（副次の節の一言をもらうため） */
+function sandboxRun(c){
+  const snap=JSON.stringify(S);
+  let r=null; try{ r=runRules(c); }catch(_){ r=null; }
+  const o=JSON.parse(snap);
+  for(const k of Object.keys(S)) if(!(k in o)) delete S[k];
+  for(const k of Object.keys(o)){ if(k==='chat'){ for(const ck of Object.keys(C)) if(!(ck in o.chat)) delete C[ck]; Object.assign(C,o.chat); } else S[k]=o[k]; }
+  return r;
+}
+/* 副次の節への一言：既存ルールの返答の最初のセリフを借りる。長い・問いかけ・演出つきなら、感情に応じた短い相づち */
+const PL_ACK={
+  neg:['serious:……そうか。それは大変じゃったのう。','normal:……ふむ、そうか。よう頑張ったのう。'],
+  pos:['happy:ほう、それはよかったのう！','smug:むふー、よいことではないか！'],
+  past:['normal:ふむふむ、そうじゃったか。','normal:ほう、そんなことがあったのか。'],
+  neu:['normal:ふむ、そうか。','normal:ほう。']
+};
+const PL_RECORD=new Set(['petTell','userLike','userHate','userHate2','userFear','userSkill','jobTell','homeSet','userHome','nameTell']);
+function planAck(sec){
+  let r;
+  if(PL_RECORD.has(sec.rule.id)){ const ex=C.expect, lv=C.leaving; try{ r=runRules(sec.ctx); }catch(_){ r=null; } C.expect=ex; C.leaving=lv; if(r&&r.ask) r=Object.assign({},r,{ask:undefined}); }
+  else r=sandboxRun(sec.ctx);
+  if(r&&r.b){ const beats=P(r.b,r.v||{}); const hasFx=beats.some(x=>x.fx);
+    const first=beats.find(x=>x.s!=null);
+    if(first&&!hasFx&&first.s.length<=34&&!/[?？]$/.test(first.s)&&!/[{}]/.test(first.s)){
+      const f=first.f||'normal'; return [{s:first.s,f,a:first.a}]; } }
+  const k=sec.pol<0?'neg':sec.pol>0?'pos':sec.tense==='past'?'past':'neu';
+  return P(rnd(PL_ACK[k]));
+}
+
+/* 参照先を入れて、既存ルールに読み直させる */
+function refRewrite(cl,w){
+  const t=cl.text.replace(/[。！!…\s]+$/,'');
+  const core=norm(t);
+  if(/^(もっと|詳しく|くわしく|続き|つづき)/.test(core)) return {kind:'more',text:w+'について詳しく教えて'};
+  if(/^(なんで|何で|どうして|なぜ)/.test(core)) return {kind:'why',text:w+'ってなんで？'};
+  if(/^(ほんと|本当|まじ)/.test(core)) return {kind:'really',text:w+'って本当？'};
+  if(/^(さっきの|前の|まえの|今の|いまの)(話|はなし)?/.test(core)&&!/[?？]$/.test(core)&&!cl.qtype&&!cl.pol) return {kind:'cont',text:''};
+  let rest=t.replace(/^(それ|そっち|そこ|あれ|あそこ|その話|さっきの話|さっきの|その|あの)/,'');
+  if(rest&&!/^(は|が|を|に|って|の|も|で|と|へ|、|,|とは|について|[?？!！。…])/.test(rest)) rest='が'+rest;
+  const rep=w+rest;
+  return {kind:cl.qtype?'q':'stmt',text:rep};
+}
+function refAgain(r,rw){
+  const lastSaid=(cxLast()&&cxLast().kamiText)||'';
+  const first=(P(r.b,r.v||{}).find(x=>x.s!=null)||{}).s||'';
+  if(!first||!lastSaid.includes(first.slice(0,12))) return r;
+  if(rw.kind==='stmt') return r;
+  return Object.assign({},r,{b:P('smug:……さっきも申したであろう！ ¶pout:仕方ないのう、もう一度だけ言うてやる。').concat(P(r.b,r.v||{})),v:null});
+}
+function planRef(p,ctx){
+  const w=p.focus.w, cl=p.clause, rw=refRewrite(cl,w);
+  const hit=lexFind(w)||lexFind(w,true);
+  const lead={
+    more:['smug:{w}のことか！ よいか、よう聞くのじゃぞ。','happy:{w}の話の続きか！ 仕方ないのう、教えてやる！'],
+    why:['smug:なぜ、とな？ ¶smug:{w}のことなら、わしに聞くがよい！','confused:なぜかと申すか。……むむ、{w}のことじゃな。'],
+    really:['smug:{w}のことか？ 本当じゃとも！ 神は嘘をつかぬ！'],
+    cont:['normal:{w}の話か？ うむ、続けるがよい。わしは聞いておるぞ。','happy:おお、{w}の話じゃな！ ¶normal:……して、どうしたのじゃ？'],
+    q:['normal:{w}のことか？'],stmt:['normal:{w}のことか。']
+  };
+  if(rw.kind==='cont') return {id:'planRef',v:{w},b:rnd(lead.cont)};
+  /* まず既存ルールに、参照を補った文で読ませる */
+  const c2={raw:rw.text,t:norm(rw.text),act:false,body:rw.text,tb:norm(rw.text),kw:kwOf(rw.text)};
+  const pr=anProbe(c2);
+  const explain=rw.kind==='why'||rw.kind==='more'||(rw.kind==='q'&&cl.qtype==='what');
+  const about=pr&&pr.re&&(()=>{ try{ return new RegExp(pr.re.source,pr.re.flags.replace('g','')).test(norm(w)); }catch(_){ return false; } })();
+  if(pr&&!AN_GENERIC.has(pr.id)&&(pr.pri||0)>=15&&(!hit||rw.kind==='stmt')){
+    const r=runRules(c2); if(r&&!AN_GENERIC.has(r.id)){ r.id=r.id||pr.id; r.planned='ref'; return refAgain(r,rw); } }
+  /* 既存ルールで読めないなら、既存の辞書の説明を使う */
+  if(hit){ const r=lexSay(hit,c2);
+    const lastSaid=(cxLast()&&cxLast().kamiText)||'';
+    const first=(P(r.b,r.v||{}).find(x=>x.s!=null)||{}).s||'';
+    const again=first&&lastSaid.includes(first.slice(0,12));
+    if(rw.kind==='more'&&again) return {id:'planRef',v:{w},b:'smug:{w}のことなら、さっき申したとおりじゃ！ ¶smug:……それ以上を知りたければ、そなたが見てきて、わしに教えるのじゃ。¶happy:そうしたら、わしはもっと詳しい神になれる！'};
+    if(again) return Object.assign({},r,{id:'planRef',b:P('smug:……さっきも申したであろう！ ¶pout:仕方ないのう、もう一度だけ言うてやる。').concat(P(r.b,r.v||{})),v:null});
+    const lb=P(rnd(lead[rw.kind]||lead.q),{w});
+    return Object.assign({},r,{id:'planRef',b:lb.concat(P(r.b,r.v||{})),v:null}); }
+  /* それでもだめなら、補った文で従来どおり */
+  const r=runRules(c2); if(r&&!AN_GENERIC.has(r.id)) return r;
+  return null;
+}
+function planCompound(p,ctx){
+  const ack=planAck(p.secondary);
+  let r=null;
+  if(p.primary.rule.soft){ const rid=p.primary.pol>0?'happyU':'sad'; const rr=RULES.find(x=>x.id===rid);
+    if(rr){ try{ r=norm2(rr.run(p.primary.ctx,[p.primary.ctx.t])); if(r) r=Object.assign({id:rid},r); }catch(_){ r=null; } } }
+  if(!r) r=runRules(p.primary.ctx)||norm2(fallback(p.primary.ctx));
+  if(!r) return null;
+  const main=P(r.b,r.v||{});
+  return Object.assign({},r,{b:ack.concat(main),v:null,planned:'compound',secondaryId:p.secondary.rule.id});
+}
+
+/* 応答計画の入口（respond から呼ばれる） */
+function planRespond(ctx){
+  let A=null, p={route:'legacy',why:'skip'};
+  if(!ctx.act){ try{ A=analyze(ctx); p=planOf(A); }catch(e){ p={route:'legacy',why:'error'}; } }
+  C.cx.plan={route:p.route,why:p.why,topics:A?A.topics:[],q:A?A.qtype:null,focus:p.focus?p.focus.w:null};
+  let r=null;
+  /* 深刻な言葉・自分を責める言葉が文のどこかにあれば、他の話題より必ず優先して受け止める（軽い相づちは添えない） */
+  if(A&&A.crisis){
+    for(const id of ['distress','selfDeprec']){ const rr=RULES.find(x=>x.id===id); if(!rr||!rr.re) continue;
+      if(rr.re.test(ctx.t)||rr.re.test(ctx.tb)){ try{ const o=norm2(rr.run(ctx,ctx.t.match(rr.re)||[])); if(o){ C.cx.plan.route='crisis'; return Object.assign({id},o); } }catch(_){} } }
+  }
+  try{
+    if(p.route==='ref') r=planRef(p,ctx);
+    else if(p.route==='compound'){
+      /* 節ごと・文全体を、既存の処理で試しに動かして（状態は戻す）実際に選ばれるルールを確かめる */
+      const base=id=>String(id||'').replace(/_x$|2$/,'');
+      const dry=A.clauses.map(c=>{ const r=sandboxRun(c.ctx); return r&&r.id?base(r.id):null; });
+      const whole=sandboxRun(ctx); const wid=whole&&whole.id?base(whole.id):null;
+      const cand=A.clauses.map((c,i)=>Object.assign(c,{dry:dry[i]})).filter(c=>(c.dry&&!AN_GENERIC.has(c.dry))||c.pol!==0);
+      const ids=new Set(cand.map(c=>c.dry||'polarity'));
+      if(wid&&!AN_GENERIC.has(wid)&&!anLight().has(wid)&&!ids.has(wid)){ C.cx.plan.route='legacy'; C.cx.plan.why='whole-sentence:'+wid; }
+      else if(cand.length<2||ids.size<2||!cand.some(c=>c.dry&&!AN_GENERIC.has(c.dry))){ C.cx.plan.route='legacy'; C.cx.plan.why='single-topic'; }
+      else{
+        const priOf=c=>{ if(!c.dry||AN_GENERIC.has(c.dry)) return 25; const rr=RULES.find(x=>base(x.id)===c.dry); return rr?(rr.pri||0):(c.rule?c.rule.pri:30); };
+        const score=c=>priOf(c)+(c.qtype&&c.toKami?25:0)+(c.contrast?20:0)+(c.pol?4:0)+(c.qtype?3:0)-(anLight().has(c.dry)?45:0);
+        const ranked=cand.slice().sort((a,b)=>score(b)-score(a));
+        const prim=ranked[0], sec=ranked[1];
+        prim.rule={id:prim.dry||'polarity',pri:priOf(prim),soft:(!prim.dry||AN_GENERIC.has(prim.dry))?1:0};
+        sec.rule={id:sec.dry||'polarity',pri:priOf(sec)};
+        r=planCompound({route:'compound',primary:prim,secondary:sec},ctx);
+        C.cx.plan.primary=prim.rule.id; C.cx.plan.secondary=sec.rule.id;
+      }
+    }
+  }catch(e){ r=null; C.cx.plan.why+='/err'; }
+  if(r) return r;
+  if(p.route!=='legacy') C.cx.plan.route='legacy-fallback';
+  return runRules(ctx);
+}
+/* 問いかけ中でも、直前の話を指す質問（「そこって遠い？」「それって何？」）なら、問いを抜けて参照として扱う */
+function planPreempt(ctx){
+  if(ctx.act||!C.expect||C.expect.t!=='th') return false;
+  try{ const cl=anClause(ctx.body,0,''); const isRefQ=cl.ref&&(!!cl.qtype||/^(もっと|詳しく|くわしく|続き|つづき)/.test(cl.ctx.t))&&!cl.terms.some(x=>x.src!=='lk');
+    if(isRefQ&&cxFocus(/^(そこ|あそこ|そっち)/.test(cl.ctx.t)?'place':null)){ C.expect=null; return true; } }catch(_){}
+  return false;
+}
+/* Kami の直前のセリフも覚えておく（「さっき申したとおり」判定用） */
+(()=>{ const base=ctxRecord; ctxRecord=function(ctx,res,out){ base(ctx,res,out); const L=cxLast(); if(L) L.kamiText=out.filter(x=>x.s!=null).map(x=>x.s).join(' ').slice(0,200); }; })();
+
+/* ---------- 自由回答の問いに「ある」「うん」だけで答えた時 ----------
+   「怖いものはあるか？」→「ある」等を、答えの中身（怖いもの＝「ある」）と取り違えない。
+   ・「ある／うん／いるよ」だけ → 中身を聞き直す（問いは続ける）
+   ・「ない／ありません」だけ → その問いの「ない」の返しへ
+   ・「あるある、雷」「うん、雷」→ 前置きを外して中身だけを答えとして扱う
+   ・こうした語は、好きなもの・苦手なもの等として記録しない */
+const BARE_YES=/^(あるある|ある|あります|あるよ|いる|います|いるよ|おる|うんうん|うん|はい|ええ|うむ|そうだね|そうだよ|そう|もちろん|もち|まあね|まあ|ちょっと|少し|すこし|たくさん|いっぱい|結構|けっこう|多分|たぶん|あるかも|いるかも)(よ|ね|な|けど|かな|です|ですね|ますよ)?[。！!、,…w笑〜～\s]*$/;
+const BARE_NO=/^(ない|ないよ|ないです|ありません|いない|いないよ|いません|おらん|特にない|とくにない|特になし|とくになし|なし|無い|ないかな)(よ|ね|な|かな|です)?[。！!…\s]*$/;
+const LEAD_YES=/^(あるある|ある|あります|いる|います|うんうん|うん|はい|ええ|そうだね|そう|もちろん)(よ|ね)?[、,。!！\s]+/;
+const BARE_SKIP=new Set(['hide_find','acchi_dir','kq1','kq2','kq3','kq4','kq5','psych1','psych2','psych3','hayakuchi_you','lk_kind','lk_desc','lk_more','pf_pet_name','game_again','game_again2','power_pick','math_back']);
+const isBareWord=w=>BARE_YES.test(w||'')||BARE_NO.test(w||'')||/^(それ|これ|あれ)$/.test(w||'');
+(()=>{ const base=handleThread;
+  handleThread=function(ctx){
+    const e=C.expect, th=e&&THREADS[e.id];
+    if(!th||!th.free||ctx.act||BARE_SKIP.has(e.id)) return base(ctx);
+    const t=hira(norm(ctx.body)).trim();
+    if(BARE_NO.test(t)){ const c2=Object.assign({},ctx,{body:'ない',tb:'ない',t:'ない'}); return base(c2); }
+    if(BARE_YES.test(t)){
+      e.bare=(e.bare||0)+1;
+      if(e.bare>2){ C.expect=null; return {id:'thBareEnd',b:'smug:……ふむ、言いたくないのじゃな。¶smug:よい、無理には聞かぬ。神は寛大なのじゃ！'}; }
+      const how=/^(ある|あります)/.test(t)?'あるのか':/^(いる|います|おる)/.test(t)?'おるのか':/^(ちょっと|少し|すこし)/.test(t)?'少しあるのか':/^(たくさん|いっぱい|結構|けっこう)/.test(t)?'たくさんあるのか':'そうか';
+      if(/どちら|どっち|どれ/.test(th.q||'')) return {id:'thBareAsk',b:pick('thBareC',['pout:「うん」では、わからぬ！ ¶smug:どちらか、はっきり選ぶのじゃ！','confused:……うむ？ どちらじゃと聞いておるのじゃぞ。¶smug:さあ、選ぶがよい！'])};
+      return {id:'thBareAsk',v:{h:how},b:pick('thBare',['happy:ほう、{h}！ ¶normal:……して、それは何じゃ？ 申してみい。','surprised:{h}！ ¶smug:勿体ぶらずに、何なのか教えるのじゃ！','normal:{h}。¶confused:……で、何じゃ？ わしは続きを待っておるのじゃぞ。'])};
+    }
+    const m=ctx.body.match(new RegExp(LEAD_YES.source));
+    if(m){ const rest=ctx.body.slice(m[0].length).trim(); if(rest){ const c2=Object.assign({},ctx,{body:rest,tb:norm(rest),kw:kwOf(rest)}); return base(c2); } }
+    return base(ctx);
+  };
+})();
+/* 記録の入口でも弾く（前置き付きは前置きを外す） */
+(()=>{ const b1=likeCapture; likeCapture=function(ctx,mode){ const t=hira(norm(ctx.body||'')).trim(); if(isBareWord(t)) return null; return b1(ctx,mode); };
+  const b2=pfCapture; pfCapture=function(f,ctx,opt){ const x=hira(norm(String(opt&&opt.x!=null?opt.x:(ctx.body||'')))).trim(); if(isBareWord(x)) return null; return b2(f,ctx,opt); }; })();
+/* すでに記録されてしまった「ある」「うん」等を取り除く（読み込み時に一度だけ） */
+(()=>{ try{
+  const bad=w=>isBareWord(hira(String(w||'')))||/^(あるよ|あるある|うんうん|いるよ)$/.test(hira(String(w||'')));
+  if(C.mem){ if(Array.isArray(C.mem.likeItems)) C.mem.likeItems=C.mem.likeItems.filter(x=>!bad(x.w));
+    if(Array.isArray(C.mem.likes)) C.mem.likes=C.mem.likes.filter(w=>!bad(w));
+    if(Array.isArray(C.mem.hates)) C.mem.hates=C.mem.hates.filter(w=>!bad(w));
+    if(C.mem.prof) for(const f in C.mem.prof) if(Array.isArray(C.mem.prof[f])) C.mem.prof[f]=C.mem.prof[f].filter(x=>!bad(x.w));
+    if(bad(C.mem.wish)) C.mem.wish=''; }
+  save(); }catch(_){} })();
+
+
+/* =====================================================================
+   会話拡張 第8弾：呼び名（カミサマからの認識）
+   ・呼び名 ＝ 冠（〜し／〜の）＋ 名（名詞）　例：「怪異を従えし」＋「みつぐくん」
+   ・冠・名は「札」。行い（甘味・撫で・掃除・遊び・無礼…）や会話の記録（ペット・仕事…）で集まる
+   ・札ごとに意味（なぜそう呼ぶか）と系統を持ち、系統の組み合わせでカミサマの反応が変わる
+   ・なかよし 6 で初めて呼び名を授かり、以後は経験値がたまるたびに呼び直される
+   ・呼び名帳（上部の称号をタップ／きろく）で札を見て、なかよし 6 以降は好きに付け直せる
+   ===================================================================== */
+S.deeds=S.deeds||{}; S.ttlOwn=S.ttlOwn||{}; S.ttlNew=Array.isArray(S.ttlNew)?S.ttlNew:[];
+const D=S.deeds;
+const TTL_STEP=60;
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function deed(k,n=1){ D[k]=(D[k]||0)+n; }
+const LVMAX=()=>LV.length-1;
+const isMax=()=>level()>=LVMAX();
+
+/* 会話の記録から作る札に使う言葉 */
+const pfLast=f=>{ try{ const L=(C.mem.prof&&C.mem.prof[f]||[]).filter(x=>!x.gone); return L[L.length-1]||null; }catch(_){ return null; } };
+const petName=()=>{ const p=pfLast('pet'); return p?(p.name||p.w):''; };
+const likeW=()=>{ try{ const L=likeItems(); return L.length?L[L.length-1].w:''; }catch(_){ return ''; } };
+const TAGN={visit:'参拝',gal:'怪異',sweet:'甘味',bitter:'苦い呪い',clean:'掃除',restore:'修繕',pat:'撫で',praise:'褒め言葉',brain:'知恵',game:'勝負',night:'夜',talk:'おしゃべり',rude:'無礼',sorry:'詫び',form:'変化',city:'都',pet:'生き物',like:'好きなもの',fear:'怖いもの',wish:'願い',faith:'信心',luck:'運',nick:'名付け',teach:'言葉',galSus:'山姥ぎゃる疑惑',crow:'鴉',friend:'友',kerai:'家来',job:'奉公',odd:'奇行'};
+
+/* ---------- 札 ----------
+   id, 冠(a)/名(b), 文字, 系統, 条件, 意味（「〜からじゃ」まで） */
+const TTL=[
+ /* 冠 */
+ {id:'a_visit',s:'a',t:'石段を登りし',g:'visit',c:()=>true,w:'この長い石段を登って、わしに会いに来たからじゃ'},
+ {id:'a_gal',s:'a',t:'怪異を従えし',g:'gal',c:()=>(C.gal||0)>=2||!!C.galTitle,w:'山姥ぎゃるを恐れぬどころか、手懐けておるからじゃ'},
+ {id:'a_sweet',s:'a',t:'甘味を捧げし',g:'sweet',c:()=>(D.sweet||0)>=8,w:'わしに甘味を、何度も何度も供えてくれたからじゃ'},
+ {id:'a_bitter',s:'a',t:'苦き呪いを運びし',g:'bitter',c:()=>(D.bitter||0)>=2,w:'わしに苦い呪いを、二度も食わせたからじゃ！ 忘れぬぞ'},
+ {id:'a_clean',s:'a',t:'境内を清めし',g:'clean',c:()=>(D.clean||0)>=8,w:'落ち葉を掃き、石畳を磨いてくれたからじゃ'},
+ {id:'a_restore',s:'a',t:'社を甦らせし',g:'restore',c:()=>(S.stage||0)>=3,w:'朽ちかけたわしの社を、ここまで直してくれたからじゃ'},
+ {id:'a_pat',s:'a',t:'神の頭を撫でし',g:'pat',c:()=>(D.pat||0)>=12,w:'神の頭を、何度も撫でたからじゃ。……光栄に思うがよい'},
+ {id:'a_praise',s:'a',t:'神を褒め称えし',g:'praise',c:()=>(D.compl||0)>=8,w:'わしの可愛さを、正しく褒め称えたからじゃ'},
+ {id:'a_riddle',s:'a',t:'謎を解きし',g:'brain',c:()=>(D.riddle||0)>=3,w:'わしの出す謎を、見事に解いてみせたからじゃ'},
+ {id:'a_win',s:'a',t:'神に勝ちし',g:'game',c:()=>(D.win||0)>=3,w:'勝負で、このわしに勝ったからじゃ。……まぐれじゃがな'},
+ {id:'a_hide',s:'a',t:'隠れ身を見破りし',g:'game',c:()=>(D.hideFound||0)>=2,w:'わしの隠れ身の術を、二度も見破ったからじゃ'},
+ {id:'a_night',s:'a',t:'夜を歩く',g:'night',c:()=>(D.night||0)>=6,w:'夜更けにも、この境内へやって来るからじゃ'},
+ {id:'a_talk',s:'a',t:'千の言葉を交わせし',g:'talk',c:()=>(D.talk||0)>=150,w:'わしと、数えきれぬほど言葉を交わしたからじゃ'},
+ {id:'a_rude',s:'a',t:'神に無礼を働きし',g:'rude',c:()=>(D.rude||0)>=3,w:'神に向かって、無礼な口をきいたからじゃ'},
+ {id:'a_sorry',s:'a',t:'詫びを知る',g:'sorry',c:()=>(D.sorry||0)>=3,w:'ちゃんと「ごめん」と言える人の子じゃからじゃ'},
+ {id:'a_form',s:'a',t:'変化を愛でし',g:'form',c:()=>(D.trans||0)>=4,w:'わしの変化の術を、何度もねだったからじゃ'},
+ {id:'a_city',s:'a',t:'都より来たりし',g:'city',c:()=>{ try{ return !!C.mem.home&&GALRE.test(hira(C.mem.home)); }catch(_){ return false; } },w:'山姥ぎゃるの巣……都から来たからじゃ'},
+ {id:'a_pet',s:'a',t:()=>petName()+'を従えし',g:'pet',c:()=>!!petName(),w:()=>petName()+'と暮らしておると聞いたからじゃ'},
+ {id:'a_like',s:'a',t:()=>likeW()+'を愛でし',g:'like',c:()=>!!likeW(),w:()=>likeW()+'が好きじゃと、申しておったからじゃ'},
+ {id:'a_fear',s:'a',t:()=>(pfLast('fear')||{}).w+'を恐るる',g:'fear',c:()=>!!pfLast('fear'),w:()=>(pfLast('fear')||{}).w+'が怖いと、正直に申したからじゃ'},
+ {id:'a_wish',s:'a',t:'願いを託せし',g:'wish',c:()=>!!pfLast('wish'),w:'わしに、願い事を託したからじゃ'},
+ {id:'a_money',s:'a',t:'賽銭を投げし',g:'faith',c:()=>(D.money||0)>=3,w:'空っぽの賽銭箱に、銭を入れてくれたからじゃ'},
+ {id:'a_pray',s:'a',t:'天に祈りし',g:'faith',c:()=>(D.pray||0)>=4,w:'この社で、何度も手を合わせたからじゃ'},
+ {id:'a_luck',s:'a',t:'運を試せし',g:'luck',c:()=>(D.omikuji||0)>=4,w:'おみくじを、何度も引いたからじゃ'},
+ {id:'a_day30',s:'a',t:'三十日通いし',g:'visit',c:()=>(S.day||0)>=30,w:'三十日も、この山に通うてきたからじゃ'},
+ {id:'a_nick',s:'a',t:'神に名を与えし',g:'nick',c:()=>!!C.nick,w:()=>'わしに「'+C.nick+'」という名をくれたからじゃ'},
+ {id:'a_teach',s:'a',t:'言葉を授けし',g:'teach',c:()=>(D.teach||0)>=3,w:'わしの知らぬ言葉を、いくつも教えてくれたからじゃ'},
+ {id:'a_galSus',s:'a',t:'山姥ぎゃるの疑いある',g:'galSus',c:()=>/疑い/.test(C.galTitle||''),w:'……自分で、山姥ぎゃるじゃと名乗ったからじゃ'},
+ {id:'a_crow',s:'a',t:'鴉に味方せし',g:'crow',c:()=>(D.crow||0)>=1,w:'わしより鴉の長老のほうが強いと、ぬかしたからじゃ'},
+ /* 名 */
+ {id:'b_hito',s:'b',t:'人の子',g:'visit',c:()=>true,w:'そなたは、人の子じゃからじゃ。……当たり前じゃな'},
+ {id:'b_mitsugu',s:'b',t:'みつぐくん',g:'sweet',c:()=>(D.sweet||0)>=15,w:'甘味をせっせと運んでくる者を、都ではそう呼ぶのじゃろ？ 知っておるぞ'},
+ {id:'b_ujiko',s:'b',t:'氏子',g:'faith',c:()=>level()>=4,w:'この社を支える、大事な人の子じゃからじゃ'},
+ {id:'b_tomo',s:'b',t:'神の友',g:'friend',c:()=>level()>=5,w:'わしの……友、じゃからじゃ'},
+ {id:'b_sennen',s:'b',t:'千年来の友',g:'friend',c:()=>level()>=6,w:'千年待って、ようやく会えた友じゃからじゃ'},
+ {id:'b_kerai',s:'b',t:'家来',g:'kerai',c:()=>(D.kerai||0)>=1,w:'友にはならぬと申したから、家来にしてやったのじゃ'},
+ {id:'b_ally',s:'b',t:'甘味同盟の盟友',g:'sweet',c:()=>(D.sweetAlly||0)>=1,w:'甘いものが好きじゃと、わしと盟約を結んだからじゃ'},
+ {id:'b_job',s:'b',t:()=>(pfLast('job')||{}).w,g:'job',c:()=>!!pfLast('job'),w:()=>(pfLast('job')||{}).w+'として、日々頑張っておるからじゃ'},
+ {id:'b_pat',s:'b',t:'撫で職人',g:'pat',c:()=>(D.pat||0)>=30,w:'撫での腕前が、職人の域に達しておるからじゃ'},
+ {id:'b_clean',s:'b',t:'掃除番',g:'clean',c:()=>(D.clean||0)>=20,w:'境内の掃除を、安心して任せられるからじゃ'},
+ {id:'b_carp',s:'b',t:'宮大工',g:'restore',c:()=>(S.stage||0)>=5,w:'社を直す腕は、宮大工にも負けぬからじゃ'},
+ {id:'b_riddle',s:'b',t:'謎かけ名人',g:'brain',c:()=>(D.riddle||0)>=6,w:'謎を解く腕が、名人の域じゃからじゃ'},
+ {id:'b_gamb',s:'b',t:'勝負師',g:'game',c:()=>(D.win||0)>=8,w:'勝負事に、めっぽう強いからじゃ'},
+ {id:'b_nightw',s:'b',t:'夜の番人',g:'night',c:()=>(D.night||0)>=15,w:'夜の境内を、わしと一緒に守っておるからじゃ'},
+ {id:'b_rude',s:'b',t:'無礼者',g:'rude',c:()=>(D.rude||0)>=5,w:'……自分の胸に聞いてみるのじゃな'},
+ {id:'b_praise',s:'b',t:'褒め上手',g:'praise',c:()=>(D.compl||0)>=20,w:'褒めるのが、上手すぎるからじゃ。……むふー'},
+ {id:'b_story',s:'b',t:'語り部',g:'talk',c:()=>(D.talk||0)>=300,w:'わしに、たくさんの話を聞かせてくれたからじゃ'},
+ {id:'b_gal',s:'b',t:'怪異使い',g:'gal',c:()=>(C.gal||0)>=5,w:'怪異を手足のように使っておると、わしは睨んでおるからじゃ'},
+ {id:'b_galSus',s:'b',t:'人に化けた山姥ぎゃる',g:'galSus',c:()=>/疑い/.test(C.galTitle||''),w:'……まだ、疑いは晴れておらぬからじゃ'},
+ {id:'b_fuku',s:'b',t:'福の神の使い',g:'luck',c:()=>(D.daikichi||0)>=1,w:'おみくじで、大吉を引き当てたからじゃ'},
+ {id:'b_odd',s:'b',t:'変わり者',g:'odd',c:()=>(D.odd||0)>=5,w:'……ようわからぬ奇行が、多いからじゃ'},
+ {id:'b_crow',s:'b',t:'鴉の長老派',g:'crow',c:()=>(D.crow||0)>=2,w:'二度も、鴉の長老の肩を持ったからじゃ'},
+ {id:'b_gourmet',s:'b',t:'甘味の目利き',g:'sweet',c:()=>Object.keys(S.tasted||{}).length>=Math.max(1,SWEETS.length-1),w:'わしの知る甘味を、ほとんど全部運んできたからじゃ'},
+ {id:'b_bitter',s:'b',t:'呪いの運び屋',g:'bitter',c:()=>(D.bitter||0)>=5,w:'苦い呪いを、何度も運んできたからじゃ'},
+ {id:'b_nick',s:'b',t:'名付け親',g:'nick',c:()=>!!C.nick,w:'わしの名付け親じゃからじゃ'},
+ {id:'b_petown',s:'b',t:()=>petName()+'の飼い主',g:'pet',c:()=>!!petName(),w:()=>petName()+'のことを、それはもう大事にしておるからじゃ'},
+ {id:'b_master',s:'b',t:'言葉の師匠',g:'teach',c:()=>(D.teach||0)>=5,w:'わしに言葉を教える、師匠じゃからじゃ'},
+ {id:'b_regular',s:'b',t:'常連',g:'visit',c:()=>(S.day||0)>=10,w:'十日以上、ここに通うておるからじゃ'},
+ {id:'b_form',s:'b',t:'着せ替え名人',g:'form',c:()=>(D.trans||0)>=10,w:'わしをあれこれ化けさせるのが、上手いからじゃ'}
+];
+const TT=id=>TTL.find(x=>x.id===id);
+const tv=(p,k)=>{ const v=p[k]; return typeof v==='function'?v():v; };
+const ttlText=()=>{ if(!S.ttl) return ''; const a=TT(S.ttl.a), b=TT(S.ttl.b); return a&&b?tv(a,'t')+tv(b,'t'):''; };
+const ownList=s=>TTL.filter(p=>p.s===s&&S.ttlOwn[p.id]);
+VARS.ttl=()=>ttlText()||(S.name||'人の子');
+
+/* ---------- 組み合わせへの反応 ---------- */
+const COMBO={
+ 'gal+sweet':'scared:……さては、山姥ぎゃるにも甘味を貢いでおるのではあるまいな？ ¶serious:手懐けたのは、甘味の力なのか……！？',
+ 'gal+pat':'serious:怪異を手懐けたその手で、神の頭も撫でておるのか……。¶bliss:……まあ、よい。そなたの撫では、たしかに効くからの。',
+ 'clean+gal':'smug:山姥ぎゃるをも掃き清める、という意味なら、頼もしい限りじゃ！',
+ 'gal+night':'scared:夜道で山姥ぎゃるに出くわしても、平気な人の子……。¶serious:……もしや、夜な夜な会うておるのか？',
+ 'gal+rude':'angry:怪異を従え、神に無礼を働く……。¶scared:そなた、さては魔王の類か！？',
+ 'gal+praise':'smug:怪異すら、そなたの褒め言葉で骨抜きにされたのでは……？ ¶angry:……わしは、骨抜きになどされておらぬぞ！ されておらぬからな！',
+ 'pat+sweet':'bliss:甘味をくれて、頭まで撫でてくれる……。¶smug:……そなた、神を甘やかす天才じゃな。',
+ 'rude+sweet':'pout:甘味をくれるのに、口は悪い……。¶smug:飴と鞭じゃな。飴のほうだけ、もろうておく！',
+ 'bitter+sweet':'bitter:甘いのと苦いのを、交互に運んでくる……。¶pout:……そなた、わしの舌で遊んでおるな？',
+ 'faith+sweet':'laugh.hop:甘味と信心……。神にとって、これ以上の人の子はおらぬ！ 満点じゃ！',
+ 'night+sweet':'hungry:夜更けに甘味を持ってくる……。¶bliss:……夜の甘味は、格別なのじゃ。わかっておるのう。',
+ 'clean+restore':'bliss:掃いて、直して……。¶serious:この社は、そなたの手でできておると言うてよい。',
+ 'clean+pat':'happy:境内も、わしの頭も、綺麗にしてくれる人の子じゃな！',
+ 'pat+praise':'bliss:撫でて、褒めて……むふー……。¶angry.shake:い、いかん！ 神がとろけてしまう！',
+ 'pat+rude':'pout:撫でながら無礼を申す……。¶angry:撫でられておるから、怒るに怒れぬではないか！',
+ 'praise+rude':'confused:褒めるのか、けなすのか、どっちなのじゃ！ ¶pout:……忙しい人の子じゃのう。',
+ 'brain+game':'pout:頭も切れて、勝負にも強い……。¶smug:……わしの出る幕がないではないか。次は負けぬぞ！',
+ 'night+talk':'sleepy:夜更けまで、わしと話し込む人の子じゃな。……神も、たまには眠いのじゃぞ。¶bliss:……もう少しだけじゃ。',
+ 'pet+sweet':'smug:そなたの{pet}にも、甘味を分けておるのか？ ¶angry:……わしの分は、減らしてはならぬぞ！',
+ 'gal+pet':'scared:怪異と{pet}を、同時に手懐けておるのか……。¶confused:そなたの家は、どうなっておるのじゃ……。',
+ 'fear+gal':'serious:怪異を従えておるのに、怖いものがある……。¶bliss:……人の子とは、不思議なものじゃのう。',
+ 'job+sweet':'bliss:奉公の帰りに、甘味を持ってくる……。¶smug:よう働いた人の子の甘味は、格別に甘いのじゃ。',
+ 'city+gal':'scared:都より来たりて、山姥ぎゃるを従える……。¶serious:……やはり、都の人の子は只者ではない……。',
+ 'faith+restore':'serious:わしの社を、ここまで甦らせた……。¶bliss:……千年で一番の氏子じゃ。本当じゃぞ。',
+ 'form+praise':'smug:化けさせては、褒める……。¶pout:わしを着せ替え人形にしておるな？ ¶smug:……まあよい。どの姿も可愛いからの！',
+ 'rude+sorry':'pout:無礼を働いては、詫びる……。¶normal:忙しいのう。……まあ、詫びを知っておるだけ、よしとする。',
+ 'friend+rude':'pout:友じゃのに、無礼者……。¶smug:……まあ、遠慮のない仲ということじゃな！',
+ 'friend+kerai':'confused:友で、家来……？ ¶smug:……うむ、どちらでもよい。わしのそばにおることに変わりはない！',
+ 'crow+friend':'angry:わしの友のくせに、鴉の肩を持つとは……！ ¶pout:……今度、あやつと三人で話をつけるのじゃ。',
+ 'gal+galSus':'scared.shake:怪異を従える、山姥ぎゃる（の疑い）……。¶serious:……つまり、そなたが親玉なのでは……！？',
+ 'galSus+sweet':'confused:山姥ぎゃる（の疑い）が、甘味を持ってくる……。¶smug:……甘味をくれるなら、山姥でもよいか！',
+ 'odd+praise':'confused:奇行の合間に、褒めてくる……。¶smug:……よう分からぬが、褒められておるなら、よしとする！',
+ 'luck+sweet':'happy:福を呼び、甘味も運ぶ……。¶laugh.hop:そなた、歩く縁起物じゃな！',
+ 'teach+talk':'smug:わしに言葉を教え、話も尽きぬ……。¶bliss:そなたと話しておると、わしはどんどん物知りになるのう。'
+};
+const SAME={
+ sweet:'laugh.hop:……甘味、甘味で、甘味じゃな。¶smug:筋金入りの、甘味の使いじゃ！',
+ gal:'scared:……怪異にかけては、そなたの右に出る者はおらぬな……。',
+ pat:'bliss:……撫でることにかけては、天下一じゃな。',
+ clean:'smug:掃除の鬼じゃ！ ……鬼は怪異じゃが、よい鬼じゃ。',
+ rude:'angry:無礼に無礼を重ねた呼び名じゃ！ ……自業自得じゃぞ！',
+ friend:'bliss:……友で、友じゃ。¶smug:二度言うほど、大事なのじゃ。',
+ night:'sleepy:……夜の申し子じゃな。昼も来るのじゃぞ？'
+};
+const TTL_ROUGH=new Set(['rude','bitter','galSus','crow','odd','kerai']);
+function ttlCombo(a,b){
+  const ga=a.g, gb=b.g; const v={pet:petName()||'生き物',A:tv(a,'t'),B:tv(b,'t'),ta:TAGN[ga]||ga,tb:TAGN[gb]||gb};
+  let src;
+  if(ga===gb) src=SAME[ga]||'smug:……{ta}にかけては、筋金入りじゃな！';
+  else if(!COMBO[[ga,gb].sort().join('+')]&&(TTL_ROUGH.has(ga)||TTL_ROUGH.has(gb))) src=pick('ttlGenR',[
+    'confused:{ta}と{tb}……。¶smug:……褒めておるのか、けなしておるのか、自分でもようわからぬ呼び名じゃな！',
+    'pout:「{A}」で、「{B}」……。¶smug:まあよい。どんな呼び名でも、わしのそばにおる人の子じゃ！'
+  ]);
+  else src=COMBO[[ga,gb].sort().join('+')]||pick('ttlGen',[
+    'confused:「{A}」でありながら、「{B}」……。¶smug:ふむ、なかなか味わい深い人の子じゃ！',
+    'smug:{ta}と{tb}……。¶bliss:そなたの良いところを、二つ並べてみたのじゃ。',
+    'normal:{ta}の人の子で、{tb}の人の子……。¶laugh:のーっじゃっじゃっじゃ！ 欲張りな呼び名じゃな！'
+  ]);
+  return X(src,v);
+}
+
+/* ---------- 札の取得 ---------- */
+function ttlCheck(silent){
+  let got=0;
+  for(const p of TTL){ if(S.ttlOwn[p.id]) continue; let ok=false; try{ ok=!!p.c(); }catch(_){ ok=false; }
+    if(ok){ S.ttlOwn[p.id]=S.day||1; got++; if(!silent&&!['a_visit','b_hito'].includes(p.id)) S.ttlNew.push(p.id); } }
+  return got;
+}
+/* 呼び名を選ぶ（新しい札ほど選ばれやすい。同じ呼び名は避ける） */
+function ttlPick(){
+  const pickW=L=>{ const tot=L.reduce((s,p)=>s+(1+Math.max(0,5-((S.day||1)-(S.ttlOwn[p.id]||1)))),0); let r=Math.random()*tot;
+    for(const p of L){ r-=1+Math.max(0,5-((S.day||1)-(S.ttlOwn[p.id]||1))); if(r<=0) return p; } return L[L.length-1]; };
+  const A=ownList('a'), B=ownList('b');
+  for(let i=0;i<8;i++){ const a=pickW(A.length>1?A.filter(p=>p.id!=='a_visit'):A), b=pickW(B.length>1?B.filter(p=>p.id!=='b_hito'):B);
+    if(!S.ttl||a.id!==S.ttl.a||b.id!==S.ttl.b) return {a:a.id,b:b.id}; }
+  return {a:A[0].id,b:B[0].id};
+}
+function ttlSet(t){ const prev=S.ttl; S.ttl=t; S.ttlPrev=S.exp; S.ttlNext=S.exp+TTL_STEP; S.ttlPending=0; save(); renderHUD(); return prev; }
+
+/* ---------- 台詞（会話用DSL。play用には P() で変換） ---------- */
+function ttlBestowDSL(kind,prev){
+  const a=TT(S.ttl.a), b=TT(S.ttl.b), T=ttlText();
+  const v={T,A:tv(a,'t'),B:tv(b,'t'),wa:tv(a,'w'),wb:tv(b,'w'),nm0:S.name||'人の子'};
+  let head;
+  if(kind==='first') head='n:少女は、こほんと咳払いをして、背筋を伸ばした。¶smug:{nm0}よ。千年来の友となったそなたに、わしから呼び名を授ける！¶smug.cheer:これより、そなたは「{T}」じゃ！';
+  else if(kind==='pick') head=pick('ttlPk',['smug:ほう、そう呼ばれたいのか。……よかろう！¶smug.cheer:そなたは、「{T}」じゃ！','happy:ふむふむ、その札が気に入ったか。¶smug.cheer:ならば今日から、「{T}」じゃ！']);
+  else head=pick('ttlRe',['n:少女が、何やら指を折って考え込んでいる。¶smug:……よし、決めた！ {nm0}、そなたの呼び名を改めるぞ！¶smug.cheer:今日からそなたは、「{T}」じゃ！','surprised:……む！ そなたを見ておったら、ぴんと来たぞ！¶smug.cheer:そなたの新しい呼び名は、「{T}」じゃ！']);
+  const expl=[];
+  if(kind==='first'||!prev||prev.a!==S.ttl.a) expl.push('normal:「{A}」は、{wa}。');
+  if(kind==='first'||!prev||prev.b!==S.ttl.b) expl.push('normal:「{B}」は、{wb}。');
+  return X([head].concat(expl).join('¶'),v)+'¶'+ttlCombo(a,b)+'¶'+pick('ttlEnd',['laugh.hop:どうじゃ、よい響きじゃろう！ むふー！','smug:ありがたく名乗るがよいぞ！ のーっじゃっじゃっじゃ！','bliss:……うむ。よう似合うておる。']);
+}
+function ttlNewsDSL(id){
+  const p=TT(id); if(!p) return '';
+  const v={P:tv(p,'t'),w:tv(p,'w'),k:p.s==='a'?'冠':'名',nm0:S.name||'人の子'};
+  const tail=isMax()?'smug:呼び名帳に書き加えておいた。気に入ったら、呼び名に使うてやってもよいぞ！':'smug:……なかよしが極まったら、これで呼び名をつけてやる。楽しみにしておれ！';
+  return X(pick('ttlNews',['surprised:……む！ ¶smug:そなたの新しい一面を見つけたぞ。「{P}」じゃ！¶normal:{w}。','smug:{nm0}よ、覚えておくがよい。そなたは「{P}」じゃ！¶normal:{w}。']),v)+'¶'+tail;
+}
+const toPlay=dsl=>P(dsl).filter(x=>!x.fx);
+
+/* ---------- 行いを数える ---------- */
+(()=>{ const base=act; act=function(k){
+  const was=inDialog, ap=S.ap;
+  base(k);
+  if(was) return;
+  if(k==='pat'){ deed('pat'); if(phase()===3) deed('night'); }
+  if(k==='clean'&&S.ap<ap){ deed('clean'); if(phase()===3) deed('night'); }
+  ttlCheck();
+  if(k==='settings') ttlSettingsEntry();
+}; })();
+(()=>{ const base=doSweet; doSweet=function(it){ const b=S.tasted[it.id]||0; base(it);
+  if((S.tasted[it.id]||0)>b){ deed('sweet'); if(it.bitter) deed('bitter'); if(phase()===3) deed('night'); } ttlCheck(); }; })();
+(()=>{ const base=formLines; formLines=function(id){ deed('trans'); return base(id); }; })();
+(()=>{ const base=gain; gain=function(o){ base(o); if(isMax()){ if(!S.ttl) S.ttlPending=1; else if(S.exp>=(S.ttlNext||1e9)) S.ttlPending=1; } }; })();
+
+/* 会話での行い（ルールの結果と、返答の文面で判定） */
+(()=>{ const base=respond; respond=function(raw,hay){
+  const out=base(raw,hay); const r=String(C.lastRule||''); const said=out.map(x=>x.s||x.n||'').join(' '); const t=norm(raw);
+  deed('talk');
+  if(phase()===3&&D.nightDay!==S.day){ D.nightDay=S.day; deed('night'); }
+  if(/^compl/.test(r)) deed('compl');
+  if(r==='riddleOK'||(/^th_kq/.test(r)&&/正解じゃ/.test(said))) deed('riddle');
+  if(r==='jkLose'||/そっちを向くとは/.test(said)) deed('win');
+  if(/なぜわかった/.test(said)) deed('hideFound');
+  if(/^insult/.test(r)) deed('rude');
+  if(/^apology/.test(r)) deed('sorry');
+  if(r==='money') deed('money');
+  if(r==='aPray') deed('pray');
+  if(r==='omikuji'){ deed('omikuji'); if(/大吉/.test(said)) deed('daikichi'); }
+  if(r==='th_ask_stronger_o'&&/鴉|からす|長老|ちょうろう/.test(t)) deed('crow');
+  if(r==='th_botchi_friend_n') deed('kerai');
+  if(r==='th_sweets_like_y') deed('sweetAlly');
+  if(r==='actgen') deed('odd');
+  if(r==='th_lk_desc_o') deed('teach');
+  ttlCheck();
+  /* 会話中に札が見つかったら、その場でひとこと（問いかけ中は控える） */
+  let extra=[];
+  if(!C.expect){
+    if(S.ttlNew[0]==='_intro'){ S.ttlNew.shift(); extra=P(ttlNewsDSL('_intro')); }
+    else if(S.ttlPending&&isMax()){ const first=!S.ttl; const prev=ttlSet(ttlPick()); extra=P(ttlBestowDSL(first?'first':'re',prev)); }
+    else if(S.ttlNew.length){ const id=S.ttlNew.shift(); extra=P(ttlNewsDSL(id)); }
+  }
+  save();
+  return extra.length?out.concat(extra):out;
+}; })();
+
+/* ---------- 告知：会話の終わり・朝・なかよし 6 ---------- */
+(()=>{ const base=levelLines; levelLines=function(l){ const L=base(l);
+  if(l>=LVMAX()){ ttlCheck(true); const prev=ttlSet(ttlPick()); return L.concat(toPlay(ttlBestowDSL('first',prev))); }
+  return L; }; })();
+(()=>{ const base=endDialog; endDialog=function(){
+  if(pendingLv==null&&!chatMode){
+    if(S.ttlNew[0]==='_intro'){ const cb=onEnd; onEnd=null; S.ttlNew.shift(); save(); play(toPlay(ttlNewsDSL('_intro')),cb); return; }
+    if(S.ttlPending&&isMax()){ const cb=onEnd; onEnd=null; const first=!S.ttl; const prev=ttlSet(ttlPick()); play(toPlay(ttlBestowDSL(first?'first':'re',prev)),cb); return; }
+    if(S.ttlNew.length){ const cb=onEnd; onEnd=null; const id=S.ttlNew.shift(); save(); play(toPlay(ttlNewsDSL(id)),cb); return; }
+  }
+  base(); }; })();
+(()=>{ const base=morningLines; morningLines=function(){ const L=base(); ttlCheck();
+  if(S.ttlPending&&isMax()){ const first=!S.ttl; const prev=ttlSet(ttlPick()); return L.concat(toPlay(ttlBestowDSL(first?'first':'re',prev))); }
+  if(S.ttl&&Math.random()<.25) return L.concat(toPlay(X(pick('ttlMorn',['smug:今日もよう来たのう、「{T}」よ！','happy:おお、「{T}」のお出ましじゃ！']),{T:ttlText()})));
+  return L; }; })();
+
+/* ---------- 画面上部：なかよし 極 と呼び名 ---------- */
+(()=>{ const base=renderHUD; renderHUD=function(){ base();
+  try{ if(isMax()&&S.ttl){ $('#hLv').textContent='なかよし 極'; $('#hTitle').textContent=ttlText();
+      const a=S.ttlPrev||S.exp, b=S.ttlNext||S.exp+TTL_STEP; $('#hExp').style.width=Math.max(0,Math.min(100,(S.exp-a)/(b-a)*100))+'%'; } }catch(_){} }; })();
+
+/* ---------- 呼び名帳 ---------- */
+(()=>{ const st=document.createElement('style'); st.textContent=
+ '#hTitle{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}'+
+ '.opt.info{cursor:default;background:var(--panel2)}.opt.info:hover{background:var(--panel2)}'+
+ '.opt.cur .rt{color:var(--moss);font-weight:700}'+
+ '.ttl-h{font-size:12px;color:var(--muted);padding:6px 4px 0;letter-spacing:.12em}';
+ document.head.appendChild(st); })();
+function ttlBook(){
+  if(inDialog) return;
+  ttlCheck(true);
+  $('#mTitle').textContent='呼び名帳';
+  const list=$('#mList'); list.innerHTML=''; list.classList.remove('rsmode','tpmode');
+  const btn=(html,cls,run)=>{ const b=document.createElement('button'); b.className='opt'+(cls?' '+cls:''); b.innerHTML=html; if(run) b.onclick=run; else b.tabIndex=-1; list.appendChild(b); return b; };
+  const head=t=>{ const h=document.createElement('div'); h.className='ttl-h'; h.textContent=t; list.appendChild(h); };
+  const max=isMax();
+  if(max&&S.ttl){ const a=TT(S.ttl.a), b=TT(S.ttl.b);
+    btn(`<span class="tx"><b>${esc(ttlText())}</b><span>${esc(tv(a,'w'))}。${esc(tv(b,'w'))}。</span></span>`,'info');
+    btn(`<span class="tx"><b>おまかせで呼び直してもらう</b><span>カミサマが、集めた札から新しい呼び名を考えます</span></span>`,'',()=>{ const prev=ttlSet(ttlPick()); play(toPlay(ttlBestowDSL('re',prev))); });
+  } else btn(`<span class="tx"><b>まだ呼び名はない</b><span>なかよし ${LVMAX()} になると、集めた札からカミサマが呼び名をつけてくれます</span></span>`,'info');
+  for(const [s,lab] of [['a','冠'],['b','名']]){
+    const own=ownList(s), all=TTL.filter(p=>p.s===s);
+    head(`${lab}　${own.length} / ${all.length}`);
+    for(const p of own){ const cur=S.ttl&&S.ttl[s]===p.id;
+      btn(`<span class="tx"><b>${esc(tv(p,'t'))}</b><span>${esc(tv(p,'w'))}</span></span><span class="rt">${cur?'使用中':max?'えらぶ':lab}</span>`,cur?'cur':'',
+        max&&!cur?()=>{ const t=Object.assign({},S.ttl); t[s]=p.id; const prev=ttlSet(t); play(toPlay(ttlBestowDSL('pick',prev))); }:null); }
+    const locked=all.filter(p=>!S.ttlOwn[p.id]);
+    const hint=locked.sort(()=>Math.random()-.5).slice(0,2);
+    for(const p of hint) btn(`<span class="tx"><b>？？？</b><span>${esc(TAGN[p.g]||'')}にまつわる${lab}</span></span>`,'info');
+    if(locked.length>hint.length) btn(`<span class="tx"><span>ほかに、まだ見つかっていない${lab}が ${locked.length-hint.length} 枚</span></span>`,'info');
+  }
+  showPanel('pMenu');
+  const first=list.querySelector('.opt:not(.info)'); first&&first.focus({preventScroll:true});
+}
+function ttlSettingsEntry(){
+  const list=$('#mList'); if(!list||$('#mTitle').textContent!=='きろく') return;
+  const b=document.createElement('button'); b.className='opt';
+  b.innerHTML=`<span class="tx"><b>呼び名帳</b><span>カミサマから見た、そなたの札 ${Object.keys(S.ttlOwn).length} 枚</span></span>`;
+  b.onclick=()=>ttlBook(); list.insertBefore(b,list.children[1]||null);
+}
+(()=>{ const el=$('#hTitle'); if(!el) return; el.setAttribute('role','button'); el.setAttribute('tabindex','0'); el.setAttribute('aria-label','呼び名帳をひらく');
+  const go=()=>{ if(inDialog||chatMode) return; ttlBook(); };
+  el.addEventListener('click',go); el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } }); })();
+
+/* ---------- 会話：「私の呼び名は？」「呼び名を変えて」 ---------- */
+rule('ttlChange',69.7,/(呼び名|よびな|称号|しょうごう|二つ名|ふたつな)(を|も)?.{0,4}(変え|かえ|変更|へんこう|新しく|あたらしく|別の|べつの|考え直|かんがえなお)|(別の|べつの|新しい|あたらしい)(呼び名|よびな|称号|しょうごう|二つ名)/,()=>{
+  if(!isMax()) return {b:'smug:呼び名は、なかよしが極まってからじゃ！ ¶normal:……今は、札を集めておる最中じゃからの。そなたの札は、もう{n}枚あるぞ。',v:{n:String(Object.keys(S.ttlOwn).length)}};
+  const prev=ttlSet(ttlPick()); return {id:'ttlChange',g:{m:3},b:ttlBestowDSL('re',prev)}; });
+rule('ttlAsk',69.6,/(呼び名|よびな|称号|しょうごう|二つ名|ふたつな)|(わたし|私|僕|ぼく|俺|おれ|あたし)(のこと)?(を)?(なんて|何て|どう)(呼|よ)/,()=>{
+  ttlCheck(true);
+  if(isMax()&&S.ttl){ const a=TT(S.ttl.a), b=TT(S.ttl.b);
+    return {id:'ttlAsk',g:{m:2},b:X('smug:そなたの呼び名か？ 「{T}」じゃ！¶normal:「{A}」は、{wa}。¶normal:「{B}」は、{wb}。',{T:ttlText(),A:tv(a,'t'),B:tv(b,'t'),wa:tv(a,'w'),wb:tv(b,'w')})+'¶'+ttlCombo(a,b)}; }
+  const n=Object.keys(S.ttlOwn).length; const own=TTL.filter(p=>S.ttlOwn[p.id]&&!['a_visit','b_hito'].includes(p.id));
+  const ex=own.length?rnd(own):null;
+  return {id:'ttlAsk',b:'smug:呼び名か。……まだ、決めておらぬ。¶normal:じゃが、そなたの札は、もう{n}枚集まっておるぞ。'+(ex?'¶smug:たとえば……「{P}」じゃな！ {w}。':'')+'¶smug:なかよしが極まったら、とびきりの呼び名をつけてやる！',v:{n:String(n),P:ex?tv(ex,'t'):'',w:ex?tv(ex,'w'):''}};
+});
+
+/* ---------- ひまな時の話し出し・再訪 ---------- */
+IDLE_TALK.push({c:()=>isMax()&&!!S.ttl,w:1,b:()=>{ const a=TT(S.ttl.a), b=TT(S.ttl.b); return X('normal:……のう、「{T}」よ。¶',{T:ttlText()})+ttlCombo(a,b); }});
+(()=>{ const base=memHook; memHook=function(){ if(isMax()&&S.ttl&&Math.random()<.15) return X(pick('ttlMem',['smug:おお、「{T}」のお出ましじゃ！','happy:待っておったぞ、「{T}」よ！']),{T:ttlText()}); return base(); }; })();
+
+/* ---------- はじめて読み込んだ時：今までの記録から札を付与（告知は一度だけ） ---------- */
+(()=>{ if(D._init) return; D._init=1;
+  try{ const t=S.tasted||{}; D.sweet=D.sweet||Object.values(t).reduce((a,b)=>a+(b||0),0);
+    D.bitter=D.bitter||SWEETS.filter(x=>x.bitter).reduce((a,x)=>a+(t[x.id]||0),0); }catch(_){}
+  const n=ttlCheck(true);
+  if(n>2) S.ttlNew.push('_intro');
+  if(isMax()&&!S.ttl) S.ttlPending=1;
+  save(); })();
+(()=>{ const base=ttlNewsDSL; ttlNewsDSL=function(id){ if(id!=='_intro') return base(id);
+  return X('normal:……のう、{nm0}。そなたのことを、改めて数えてみたのじゃ。¶smug:そなたの札が、もう{n}枚も集まっておったぞ！ ¶smug:呼び名帳で見られるようにしておいた。',{nm0:S.name||'人の子',n:String(Object.keys(S.ttlOwn).length)})+(isMax()?'':'¶smug:……なかよしが極まったら、呼び名をつけてやるからの！'); }; })();
+
+
+/* =====================================================================
+   会話拡張 第9弾：カミサマに触れる（つつく・なでる）の判定と反応を増やす
+   ・新しい部位：眉（左右）・眉間・前髪
+       眉は描画側の browY／browAngle／browIn を実際に動かす
+   ・新しい操作：ダブルタップ／弾く（上下左右）／なで続け（二段目）
+   ・組み合わせ：両ほっぺ・両眉・両目・上から順に
+   ・状況：夜の眠気／ごきげん斜め／空腹／なかよし高め／呼び名
+   ・つつきすぎ → 怒る → さらに続けると拗ねる → 仲直り
+   ===================================================================== */
+
+/* ---------- 部位の判定：眉・眉間・前髪（頭の座標系。眉は model.brows の位置から算出） ---------- */
+let tzSide='';
+(()=>{ const base=rigZone; rigZone=function(e){
+  try{ const R=rigRest(e), x=R.h[0], y=R.h[1]; tzSide=x<342?'L':'R';
+    if(x>150&&x<560&&y<440){
+      if(x>=266&&x<=328&&y>=182&&y<=237) return 'brow';
+      if(x>=356&&x<=420&&y>=182&&y<=233) return 'brow';
+      if(x>328&&x<356&&y>=186&&y<=242) return 'miken';
+      if(y>=158&&y<182&&x>=262&&x<=424) return 'bangs';
+    } }catch(_){}
+  return base(e); }; })();
+
+/* ---------- 眉を動かす ---------- */
+function browFx(kind){
+  if(!RIG.ok||form!=='girl') return;
+  const set=(k,v,d)=>{ try{ RIG.ch.set(k,v,{duration:d}); }catch(_){} };
+  const reset=ms=>setTimeout(()=>{ set('browY',0,.3); set('browAngle',0,.3); set('browIn',0,.3); },ms);
+  if(kind==='tap'){ set('browY',1,.08); setTimeout(()=>set('browY',0,.25),170); }
+  else if(kind==='dbl'){ set('browY',1,.06); setTimeout(()=>set('browY',0,.1),130); setTimeout(()=>set('browY',1,.06),260); setTimeout(()=>set('browY',0,.25),400); }
+  else if(kind==='up'){ set('browY',1,.12); reset(1000); }
+  else if(kind==='down'){ set('browY',-1,.12); set('browAngle',-1,.12); reset(1100); }
+  else if(kind==='stroke'){ set('browIn',1,.2); setTimeout(()=>set('browIn',0,.3),450); }
+  else if(kind==='hold'){ set('browY',-.6,.2); reset(900); }
+  else if(kind==='miken'){ set('browIn',1,.12); set('browAngle',.6,.12); reset(750); }
+  else if(kind==='troubled'){ set('browAngle',1,.15); set('browY',-.3,.15); reset(1200); }
+}
+
+/* ---------- 反応の台詞 ---------- */
+Object.assign(TZ,{
+ brow:{f:'surprised',
+  tap:['のじゃっ！？ 眉をつつくでない！','わしの眉が気になるか？ 太くて立派じゃろう！','眉はな、神の威厳の源なのじゃ','ぴくっ……い、今のは眉が勝手に動いただけじゃ！','この眉は、わしが一番こだわったところじゃぞ','眉を押すと、表情が作れぬではないか！','……今、「柴犬みたいな眉」と思うたな？ 顔に書いてあるぞ！','この眉が可愛いと、鴉の長老が申しておった。……たぶん褒めておった'],
+  dbl:['眉がぴくぴくするであろう！','二回つつくと、眉が二回上がるのじゃ。……ほれ、上がった'],
+  stroke:['眉を整えておるのか？ ……むふー、よい心がけじゃ','眉毛を撫でるとは、変わった人の子じゃのう','そ、そっちは毛並みと逆じゃ！ 眉が逆立つ！','……眉を撫でられると、なんだか眠くなるのう'],
+  stroke2:['……そんなに眉を撫でて、形が変わったらどうするのじゃ','眉が……つやつやになってしもうた……'],
+  hold:['眉を押さえるでない！ 驚いた顔ができぬではないか！','む……眉が動かせぬ……。怒った顔も、困った顔もできぬ……'],
+  flick_up:['眉を持ち上げるでない！ ……驚いた顔になってしまうじゃろ','おおっ！？ ……と、驚いた顔にさせられた'],
+  flick_down:['眉を下げるでない！ ……怒っておるように見えるではないか','む、むむ……への字の眉にするでない！'],
+  flick:['眉を弾くでない！ 眉毛が散らかる！'],
+  many:['眉が攣るではないか！','眉毛禁止じゃ！ 眉毛禁止！']},
+ miken:{f:'confused',
+  tap:['眉間をつつくでない！ しわが寄るであろう！','そこは眉間じゃ。……考え事をする場所じゃぞ','むむっ……眉間を押されると、難しい顔になってしまう','眉間に何かついておるか？'],
+  dbl:['眉間を二度も……。わしを悩ませたいのか？'],
+  stroke:['眉間のしわを伸ばしておるのか？ ……しわなど、寄っておらぬぞ','眉間を撫でられると……ふぁ……眠うなる……'],
+  hold:['……眉間を押すと、頭がすっきりする……気がするのう','そこを押さえられると、第三の目が開きそうじゃ。……開かぬがな'],
+  flick:['眉間を弾くでない！ ……でこぴんか！？'],
+  many:['眉間ばかりつつくでない！ 本当にしわが寄る！']},
+ bangs:{f:'surprised',
+  tap:['前髪をいじるでない、分け目が変わる','前髪は、朝に風で整えたのじゃ','おでこは見せぬぞ！ 神の秘密じゃ','前髪が目に入る……。直してくれるのか？'],
+  dbl:['前髪をぱさぱさするでない！'],
+  hold:['前髪を持ち上げるでない！ お、おでこを見るでない！','……前髪の下が気になるか？ 何もないぞ。本当に何もないぞ'],
+  flick_up:['のじゃっ！？ おでこを見たな！？ ……わ、忘れるのじゃ！'],
+  flick:['前髪を弾くでない、分け目が崩れる！'],
+  many:['前髪が崩れるであろう！']}
+});
+/* 既存の部位にも、ダブルタップ・弾く・なで続け・台詞を足す */
+const tzAdd=(z,o)=>{ const d=TZ[z]; if(!d) return; for(const k in o){ d[k]=(d[k]||[]).concat(o[k]); } };
+tzAdd('ahoge',{tap:['双葉は、本体と繋がっておるのじゃぞ！','双葉をつつくと、大木の葉が一枚揺れるのじゃ。……ほれ、今揺れた'],dbl:['双葉が……びよんびよんするのじゃ！'],flick:['のじゃっ！？ 双葉を弾くでない！ びよーんとなったではないか！','双葉が……揺れが止まらぬ……'],stroke2:['……双葉、撫でられすぎて、ふにゃっとなってしもうた']});
+tzAdd('head',{tap:['……なんじゃ、その「ぽん」は。何かの合図か？','頭を叩いても、甘味は出てこぬぞ'],dbl:['ぽんぽん、じゃな。……ふむ、二回なら許す'],flick:['頭を弾くでない！ 神の頭じゃぞ！'],stroke2:['……まだ撫でるのか……。ふにゃ……もう、好きにせい……','撫ですぎじゃ……神が、とろけてしまう……','……むふー……。はっ！ い、今、寝ておらぬぞ！']});
+tzAdd('hair',{dbl:['髪を二度も触るとは……よほど気に入ったのじゃな'],flick:['髪をなびかせてくれたのか？ ……ふふん、絵になるじゃろ'],stroke2:['……そんなに梳いたら、髪がつやつやになりすぎてしまう。……よいぞ、もっとやれ']});
+tzAdd('eyes',{tap:['目に塵が……いや、そなたの指じゃ'],dbl:['目を二度つつくでない！ ぱちぱちしてしまう！'],flick:['目の前で手を振るでない！ 見えておる！']});
+tzAdd('cheek',{tap:['むにっ。……もちもちじゃろう？','ほっぺは、大福くらい柔らかいのじゃ'],dbl:['むにゅ、むにゅ。……二回もつつくでない','ほっぺで遊ぶでない！'],flick:['ほっぺを弾くでない！ ぷるんとしたではないか！'],stroke2:['……ほっぺを撫でられると、ぽかぽかしてくるのう']});
+tzAdd('mouth',{dbl:['むぐ、むぐっ！？'],flick:['口元を弾くでない！ ……甘味の欠片でもついておったか？']});
+tzAdd('face',{tap:['……にらめっこか？ 負けぬぞ'],dbl:['顔をつつきすぎじゃ……何か確かめておるのか？'],flick:['顔の前で指を振るでない。……目で追うてしまう']});
+tzAdd('ear',{dbl:['耳を二度も……！ ひゃっ、ひゃっ！'],flick:['耳を弾くでない！ きーんとした！']});
+tzAdd('chin',{dbl:['顎をくいっとするでない。……少女漫画か？'],flick:['顎を弾くでない！ 舌を噛む！']});
+tzAdd('neck',{dbl:['首筋を二度も！ ぞわっとしたではないか！'],flick:['首を弾くでない！']});
+tzAdd('sleeve',{dbl:['袖を二度引くのは、「こっちに来い」という合図か？'],flick:['袖をひらひらさせるでない！ ……ちょっと楽しいが'],stroke2:['……袖を撫でておると、落ち着くのか？ 迷子の童のようじゃのう']});
+tzAdd('obi',{dbl:['帯を叩くでない、太鼓ではないぞ'],flick:['帯を弾くでない！ 結び目がずれる！']});
+tzAdd('collar',{dbl:['襟を整えてくれておるのか？'],flick:['襟を弾くでない！']});
+tzAdd('body',{dbl:['二度もつつくでない！ ……くすぐったいのじゃ！'],flick:['のじゃっ！？ 弾くでない！'],stroke2:['くすぐったい！ も、もうやめい……ふふっ、あははっ！']});
+const TZ_FLICK=['弾くでない！','のじゃっ！？ 何をする！'];
+const TZ_MOODS={
+ night:['……ふぁ。夜更けにつつくでない……','夜は眠いのじゃ……つつくなら、優しゅうな……','……ん……。今のは、夢ではないのじゃな……'],
+ grumpy:['……今は、そういう気分ではない','ふん。……甘味が先じゃ','……つついても、機嫌は直らぬぞ'],
+ hungry:['つつくより、甘味をくれぬか……？','……指が、団子に見えてきた'],
+ close:['……そなたの手は、落ち着くのう','ふふ……そなたなら、よいぞ','……千年で一番、優しい手じゃ'],
+ ttl:['むふー、さすがは「{T}」じゃ。触れ方が違う','……「{T}」は、つつき方にも品があるのう'],
+ sulkStart:['もう知らぬ！ ……しばらく触るでない！','ふんっ！ 神は拗ねたぞ！ 当分口をきかぬ！'],
+ sulk:['……（ぷいっ）','……知らぬ。','……触るでないと申したであろう','…………。'],
+ unsulk:['……ふん。もう怒っておらぬ。……少しだけな','……今度つつきすぎたら、本当に祟るからの']
+};
+STROKE_LINES.push('むふー……そなた、撫でるのが上手くなったのう','……撫でられておると、本体の葉まで、つやつやになる気がするのじゃ','ふにゃ……。……はっ！ い、今の顔は見なかったことにせい！');
+
+/* ---------- 反応を選ぶ（状況で差し替え） ---------- */
+function tzPick(z,kind){
+  const d=TZ[z]||TZ.body;
+  let pool=d[kind];
+  if(!pool||!pool.length){ if(/^flick/.test(kind)) pool=d.flick||TZ_FLICK; else if(kind==='dbl') pool=d.tap; else if(kind==='stroke2') pool=d.stroke||d.tap; else pool=d.tap; }
+  const r=Math.random();
+  if((kind==='tap'||kind==='dbl')&&phase()===3&&r<.25) return pick('tzNight',TZ_MOODS.night);
+  if(kind==='tap'&&S.mood<25&&r<.35) return pick('tzGrump',TZ_MOODS.grumpy);
+  if(kind==='tap'&&S.hunger<25&&r<.2) return pick('tzHung',TZ_MOODS.hungry);
+  if(['hold','stroke','stroke2'].includes(kind)&&level()>=5&&['head','hair','cheek','sleeve','bangs','chin'].includes(z)&&r<.35) return pick('tzClose',TZ_MOODS.close);
+  if(typeof isMax==='function'&&isMax()&&S.ttl&&r<.07) return X(pick('tzTtl',TZ_MOODS.ttl),{T:ttlText()});
+  return pick('tz'+kind+'_'+z,pool);
+}
+
+/* ---------- 組み合わせ ---------- */
+let tzHist=[], tzLastTap={z:'',t:0}, tzManyT=[], sulkUntil=0, sulkWas=false;
+const TZ_ORDER=['ahoge','bangs','head','brow','miken','eyes','cheek','face','mouth','chin','neck','collar','obi'];
+function tzCombo(){
+  const H=tzHist; if(H.length<2) return null;
+  const a=H[H.length-2], b=H[H.length-1], quick=b.t-a.t<1500, lr=a.side&&b.side&&a.side!==b.side;
+  if(quick&&lr&&a.z==='cheek'&&b.z==='cheek'){ tzHist=[]; return {f:'pout',a:'squish',t:pick('tzcC',['むにゅっ！？ 左右から……同時につつくでない！','両ほっぺを狙うとは……策士じゃな！','ぷくー！ ……空気が抜けたではないか！'])}; }
+  if(quick&&lr&&a.z==='brow'&&b.z==='brow'){ tzHist=[]; browFx('dbl'); return {f:'confused',t:pick('tzcB',['眉の左右を揃えておるのか？ ……ずれておるなら、直してくれ','右の眉と、左の眉……どちらが好みじゃ？ ……選べぬじゃろう！'])}; }
+  if(quick&&lr&&a.z==='eyes'&&b.z==='eyes'){ tzHist=[]; return {f:'angry',t:'両目は反則じゃ！ ……見えぬ！ 真っ暗じゃ！'}; }
+  if(H.length>=3){ const L3=H.slice(-3), ix=L3.map(h=>TZ_ORDER.indexOf(h.z));
+    if(ix.every(i=>i>=0)&&ix[0]<ix[1]&&ix[1]<ix[2]&&L3[2].t-L3[0].t<3000){ tzHist=[]; return {f:'confused',t:pick('tzcT',['上から順に……神の点検でもしておるのか！？','双葉から順に確かめておるな？ ……不良品はないぞ！'])}; } }
+  return null;
+}
+
+/* ---------- 反応の本体（既存の tzSay を置き換え。変身中・つつきすぎ・好感度の扱いは従来どおり） ---------- */
+tzSay=function(z,kind){
+  const now=Date.now();
+  if(TZ_FORM[z]){ if(now-lastBubbleT<350) return; lastBubbleT=now; bubble(rnd(TZ_FORM[z])); anim('shake'); return; }
+  if(kind==='tap'){ if(tzLastTap.z===z&&now-tzLastTap.t<380){ kind='dbl'; tzLastTap={z:'',t:0}; } else tzLastTap={z,t:now}; }
+  if(kind!=='dbl'&&now-lastBubbleT<350) return;
+  lastBubbleT=now;
+  const d=TZ[z]||TZ.body;
+  /* 拗ね中 */
+  if(now<sulkUntil){ if(kind==='tap'||kind==='dbl'){ setFace('pout'); bubble(pick('tzSulk',TZ_MOODS.sulk)); resetFaceSoon(1800); } return; }
+  if(sulkWas&&(kind==='tap'||kind==='hold'||kind==='dbl')){ sulkWas=false; setFace('pout'); bubble(pick('tzUnsulk',TZ_MOODS.unsulk)); resetFaceSoon(2000); return; }
+  /* 呼び名の札のための数え上げ */
+  if(typeof deed==='function'){
+    if(kind==='tap'||kind==='dbl'||/^flick/.test(kind)){ deed('poke'); if(z==='ahoge') deed('ahoge'); }
+    if(z==='brow'||z==='miken') deed('brow');
+  }
+  /* 組み合わせ */
+  if(kind==='tap'||kind==='dbl'){
+    tzHist.push({z,side:tzSide,t:now}); tzHist=tzHist.filter(h=>now-h.t<3000).slice(-5);
+    const c=tzCombo(); if(c){ setFace(c.f); anim(c.a||'shake'); bubble(c.t); resetFaceSoon(1800); return; }
+  }
+  if(kind==='tap'){
+    tzCount[z]=(tzCount[z]||0)+1; clearTimeout(tzT); tzT=setTimeout(()=>tzCount={},5000);
+    if(tzCount[z]>=4){
+      tzManyT=tzManyT.filter(t=>now-t<20000); tzManyT.push(now);
+      if(tzManyT.length>=2){ tzManyT=[]; tzCount={}; sulkUntil=now+6000; sulkWas=true; setFace('pout'); anim('shake'); bubble(pick('tzSulkS',TZ_MOODS.sulkStart)); gain({m:-3}); resetFaceSoon(2400); return; }
+      setFace('angry'); anim('shake'); bubble(rnd(d.many||TZ.body.many)); if(z==='brow') browFx('down'); gain({m:-2}); tzCount[z]=0; resetFaceSoon(1800); return;
+    }
+    setFace(d.f); if(['body','ahoge','eyes','mouth','obi','brow','miken','bangs'].includes(z)) anim('shake'); else if(z==='cheek') anim('squish');
+    bubble(tzPick(z,'tap'));
+    if(z==='brow') browFx('tap'); else if(z==='miken') browFx('miken');
+  }else if(kind==='dbl'){
+    setFace(d.f==='bliss'?'happy':d.f); anim(z==='cheek'?'squish':'shake'); bubble(tzPick(z,'dbl'));
+    if(z==='brow') browFx('dbl'); else if(z==='miken') browFx('miken');
+  }else if(/^flick/.test(kind)){
+    const dir=kind.split('_')[1]||''; const key=d['flick_'+dir]?'flick_'+dir:'flick';
+    setFace(z==='hair'||z==='sleeve'?'smug':z==='brow'&&dir==='down'?'angry':'surprised'); anim('shake'); bubble(tzPick(z,key));
+    if(z==='brow') browFx(dir==='up'?'up':dir==='down'?'down':'tap'); else if(z==='miken') browFx('miken');
+  }else if(kind==='hold'){
+    const warm=['head','hair','sleeve','face','bangs'].includes(z);
+    setFace(warm?'bliss':'surprised'); bubble(tzPick(z,'hold'));
+    if(z==='brow') browFx('hold'); else if(z==='miken') browFx('troubled');
+    if(warm && (S.strokesToday||0)<8){ S.strokesToday=(S.strokesToday||0)+1; gain({m:3,e:1}); if(z==='head'||z==='bangs') heartBurst(2); }
+  }else if(kind==='stroke'){
+    setFace(z==='cheek'||z==='body'||z==='ahoge'?'laugh':'bliss'); bubble(tzPick(z,'stroke'));
+    if(z==='brow') browFx('stroke'); else if(z==='miken') browFx('stroke');
+    if(['hair','cheek'].includes(z) && (S.strokesToday||0)<8){ S.strokesToday=(S.strokesToday||0)+1; gain({m:3,e:1}); heartBurst(2); }
+  }else if(kind==='stroke2'){
+    setFace(['cheek','body','ahoge'].includes(z)?'laugh':'bliss'); bubble(tzPick(z,'stroke2'));
+    if(['head','hair','cheek','bangs'].includes(z) && (S.strokesToday||0)<8){ S.strokesToday=(S.strokesToday||0)+1; gain({m:3,e:1}); heartBurst(3); }
+  }
+  resetFaceSoon(1800);
+};
+
+/* ---------- 操作の判定：弾く（素早い払い）・なで続け（二段目） ---------- */
+let fg=null;
+charWrap.addEventListener('pointerdown',e=>{
+  if(down&&e.pointerId===activePointer){ fg={x:e.clientX,y:e.clientY,t:performance.now(),z:tZone,s2:false}; if(tZone==='bangs') onHead=true; } else fg=null;
+});
+charWrap.addEventListener('pointermove',e=>{
+  if(!fg||!down||e.pointerId!==activePointer||fg.s2) return;
+  const plain=form==='girl'&&!charWrap.classList.contains('giant')&&!charWrap.classList.contains('tiny'); if(!plain) return;
+  if(onHead?ticks>=16:strokeTicks>=12){ fg.s2=true; tzSay(fg.z==='bangs'?'head':fg.z,'stroke2'); }
+});
+charWrap.addEventListener('pointerup',e=>{
+  if(!fg) return; const f=fg; fg=null;
+  const dt=performance.now()-f.t, dx=e.clientX-f.x, dy=e.clientY-f.y, dist=Math.hypot(dx,dy);
+  if(dt<320&&dist>40&&!inDialog){ const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'); tzSay(f.z,'flick_'+dir); }
+});
+(()=>{ const base=strokeDone; strokeDone=function(){ base(); if(typeof deed==='function') deed('stroke'); }; })();
+
+/* ---------- 呼び名の札（触れ方にまつわるもの） ---------- */
+Object.assign(TAGN,{brow:'眉',poke:'つつき',ahoge:'双葉'});
+TTL.push(
+ {id:'a_brow',s:'a',t:'眉を愛でし',g:'brow',c:()=>(D.brow||0)>=12,w:'神の自慢の眉を、何度も愛でたからじゃ'},
+ {id:'b_brow',s:'b',t:'眉の理解者',g:'brow',c:()=>(D.brow||0)>=30,w:'この眉の良さを、ようわかっておるからじゃ'},
+ {id:'a_poke',s:'a',t:'つつき続けし',g:'poke',c:()=>(D.poke||0)>=80,w:'神を、何十回とつつき続けたからじゃ'},
+ {id:'b_poke',s:'b',t:'つつき魔',g:'poke',c:()=>(D.poke||0)>=200,w:'……つつきすぎじゃからじゃ'},
+ {id:'a_ahoge',s:'a',t:'双葉をつまみし',g:'ahoge',c:()=>(D.ahoge||0)>=15,w:'大事な双葉を、何度もつまんだからじゃ'},
+ {id:'b_nade',s:'b',t:'なでなで名人',g:'pat',c:()=>(D.stroke||0)>=25,w:'わしの頭を、それはもう上手に撫でるからじゃ'}
+);
+Object.assign(COMBO,{
+ 'brow+praise':'smug:……眉まで褒めるとは、わかっておるのう！ ¶bliss:この眉は、わしの自信作なのじゃ。',
+ 'brow+pat':'bliss:頭も眉も撫でる……。¶smug:そなたの手は、わしの顔の地図を覚えておるのか？',
+ 'brow+poke':'pout:眉をつつき、あちこちつつく……。¶angry:わしは、つつき放題の遊び道具ではないぞ！',
+ 'pat+poke':'normal:撫でる手と、つつく指……。¶pout:どちらかにせい！ ……いや、撫でるほうにせい！',
+ 'ahoge+pat':'bliss:双葉をつまむ手で、頭も撫でる……。¶pout:双葉だけは、そっと扱うのじゃぞ！',
+ 'poke+rude':'angry:つついて、無礼を申して……。¶pout:そなた、神をからかうのが趣味なのか！？',
+ 'ahoge+brow':'confused:双葉と眉……わしの顔の、上のほうばかり触っておるのう。¶smug:……目立つところじゃからな！'
+});
+TTL_ROUGH.add('poke'); TTL_ROUGH.add('ahoge');
 
 /* ============ OVERLAYS ============ */
 function showStart(){
