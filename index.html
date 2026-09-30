@@ -1774,6 +1774,7 @@ button{touch-action:manipulation}
          第9回：きじむなー（ルール kijimuna・gajumaru・kijimunaMet。沖縄の返事に 2 つ）
          第10回：語の説明 DEF（ルール defineWord。「〇〇って何？」の形だけ）／拾い方の直し／つなぎの言葉（conjOnly・問いの直後は聞き直し・文頭を外す）
          第11回：語の説明の追加 28 語＋おにいちゃん・大阪と都会の差し替え／次に来る約束（promiseTomorrow。「またね」と同じ引き留めの段）／「おにいちゃん」の呼びかけ（oniiCall。姿 form で返事を変える）
+         第12回：神無月のぼっちの一言／「それって何？」を直前のカミサマの台詞の語の説明へ（C.lastKami・REF_DEF。一番外側の respond）／おみくじの「山姥「〜に注意」」を「それ」の指す先から外す
          第4回：違う季節の匂いは、次の季節＝先触れ・前の季節＝名残・一つ飛ばし＝「季節を一つ飛ばしておらぬか」／軽い落ち込みの話を棚に「元気が出ない話」（e.dark='low'）として覚え、「さっきの話だけど」で戻った時の返事
      7. OVERLAYS / BOOT
    ■ 返答の流れ respond(raw)
@@ -12918,6 +12919,35 @@ LAYER('handleExpect','美青年の姿の時の「おにいちゃん！」は、�
 const ONII_HEAD=RX`^(?:ねえ|ねぇ|なあ)?[、,\s]*(${SYN.onii})[ー〜~]*[、,，!！\s]+(.+)$`;
 (()=>{ const base=respond; respond=function(raw,hay){ try{ const m=String(raw||'').match(ONII_HEAD); if(m&&m[2].trim().length>=2) raw=m[2].trim(); }catch(_){} return base(raw,hay); }; })();
 LAYER('respond','「おにいちゃん、〜」は呼びかけを外して中身で受ける（第11回）');
+
+/* =====================================================================
+   点検の直し 第12回：神無月のぼっちの一言・「それって何？」をカミサマの言った語の説明へ・おみくじの後の「それ」
+   ・神無月：説明の「呼ばれたことがないがの」を、ぼっちの一言（ユーザーの台詞）に置き換えてつなぐ
+   ・直前のカミサマの台詞（C.lastKami。この往復の一つ前の返事だけ）に、古い言葉・珍しい言葉（REF_DEF）が入っていて、
+     人の子が「それって何？」「何それ？」等だけを言った時は、その語の説明を返す（語が 2 つ以上なら、最後に出てきた語）
+     人の子の直前の語を指す今の作り（planRef）より先。深刻な言葉・軽い落ち込みの返事の後にはつなげない
+   ・おみくじの結果の「山姥「〇〇に注意」」は、「それ」の指す先に入れない（「それって何？」で山姥ぎゃるの話になっていた）
+   ===================================================================== */
+(()=>{ const d=DEF.find(x=>x.w.includes('神無月')); if(d) d.say='smug:神無月とは、十月のことじゃ。八百万の神々が、出雲に集まる月でな。¶pout:……わしは、出雲の集まりに呼ばれたことなど、ないがの。¶angry:い、行かぬだけじゃ！ 呼ばれても、行ってやらぬのじゃ！'; })();
+/* 対象の語：[台詞の中で探す言い方, 説明を引く語] */
+const REF_DEF=[
+ [['からくり'],'からくり'],[['活動写真'],'活動写真'],[['瓦版'],'瓦版'],[['百鬼夜行'],'百鬼夜行'],[['茶釜'],'茶釜'],[['絵草紙'],'絵草紙'],
+ [['神通力'],'神通力'],[['神無月'],'神無月'],[['旅籠'],'旅籠'],[['美青年'],'美青年'],[['お姉ちゃん','おねえちゃん'],'お姉ちゃん'],
+ [['おにいちゃん','お兄ちゃん','兄上','お兄様'],'おにいちゃん'],[['一角獣'],'一角獣'],[['親父殿'],'親父殿'],[['婆様'],'婆様'],[['爺様'],'爺様'],
+ [['童ら','童'],'童ら'],[['神の使い'],'神の使い'],[['ぱわーすぽっと'],'ぱわーすぽっと'],[['変化の術'],'変化の術'],[['大吉'],'大吉']];
+const REF_Q=/^(?:(?:それ|これ|あれ)(?:って|は)?(?:何|なに|なん)(?:だ|なの|のこと|ですか|だろう|じゃ)?|(?:何|なに|なん)(?:それ|これ|あれ)|(?:それ|これ|あれ)って)[?？!！。…ー〜\s]*$/;
+function refDefPick(text){ let best=null,at=-1; for(const [ws,q] of REF_DEF) for(const w of ws){ const i=String(text||'').lastIndexOf(w); if(i>at){ at=i; best=q; } } return best; }
+(()=>{ const base=respond; respond=function(raw,hay){
+  const t=String(raw||'').trim(), L=C.lastKami, n0=TURN.n; let out=null;
+  try{ if(L&&L.n===n0&&REF_Q.test(t)&&!FL_CRISIS_RULES.has(L.rule||'')){ const q=refDefPick(L.text); if(q) out=base(q+'って何？',hay); } }catch(_){ out=null; }
+  if(!out) out=base(raw,hay);
+  try{ C.lastKami={n:TURN.n,rule:C.lastRule||'',text:out.filter(b=>b&&b.s!=null).map(b=>b.s).join(' ')}; }catch(_){}
+  return out; }; })();
+LAYER('respond','「それって何？」「何それ？」等だけの時は、直前のカミサマの台詞の古い言葉・珍しい言葉の説明を返す（第12回・一番外側）');
+/* おみくじの結果の「山姥「〇〇に注意」」を、「それ」の指す先に入れない */
+(()=>{ const base=ctxRecord; ctxRecord=function(ctx,res,out){ base(ctx,res,out);
+  try{ const L=cxLast(); if(L&&/omikuji/.test(L.rule||'')){ const bad=w=>/山姥/.test(String(w&&w.w||w)); L.kami=(L.kami||[]).filter(w=>!bad(w)); L.kamiT=(L.kamiT||[]).filter(w=>!bad(w)); if(L.kamiText) L.kamiText=L.kamiText.replace(/山姥「[^」]*」。?/g,''); } }catch(_){} }; })();
+LAYER('ctxRecord','おみくじの結果の「山姥「〇〇に注意」」は、「それ」の指す先に入れない（第12回）');
 
 /* ============ OVERLAYS ============ */
 function showStart(){
