@@ -1977,7 +1977,10 @@ button{touch-action:manipulation}
          第43回：分岐と辞書 E 身近な名詞 25 語（VOCAB_DAILY2 を VOCAB に）
          第44回：七十二候は神社を直し終えてから（kouBeats・kouSettingsEntry を包む。初めての時だけ説明 KOU_INTRO）
          第45回：時計の暦より前に直し終えていた記録を、次に開いた時に時計の暦へ（clockMigrateDue・CLOCK_MIGRATE・clockArrive を包む。S.clockMigrated）
-         台詞：第13〜45回の Claude 作の台詞は本採用（docs/台詞の一覧_第13〜20回.md）
+         第46回：言葉の束 2（取り違えの直し：compl／compl2 の run・でんしまねーの k・えすえぬえすの MOD_LINE_TAG・kwOf を包む／ルール herQ3（HER_Q3）・famEvt・brb・promiseAgain・cantCome・
+                 evt2（USER_EVT2）・evStiff・yabai・haihai・bored2・continue2／threadAfter を包む（席を外す・来られない日・家の者の具合は問いなし））
+         第47回：描画の軽量化（GL_TUNE・glTunePatch・glTuneUse：カミサマの WebGL の描画面をまとまりごとに作り直さない描き方を、端末ごとに測って速い方に。rigInit を包み RIG.ch.drawAttached を包む。?glmode= ?fps=1）
+         台詞：第13〜46回の Claude 作の台詞は本採用（docs/台詞の一覧_第13〜20回.md）
      7. OVERLAYS / BOOT
    ■ 返答の流れ respond(raw)
      C.expect あり → handleExpect → handleThread（問いへの答え）
@@ -15474,6 +15477,184 @@ LAYER('clockArrive','時計の暦へ移した直後は、来た時の場面を�
 setTimeout(()=>{ try{ if(!clockMigrateDue()) return;
   S.clockMigrated=1; S.calOpenSaid=1; calSetMode('clock'); CLOCK_MIG_NOW=1; clockMuteUntil=Date.now()+3000; save(); renderHUD();
   play(P(CLOCK_MIGRATE)); }catch(_){} },250);
+
+/* =====================================================================
+   第46回：言葉の束 2（ふだんの言葉 300 個を流した下調べ。docs/過去の記録/下調べ_言葉の束2_2026-10-03.md）（tests/check_jisho.js の F）
+   台詞は Claude 作（docs/台詞の一覧_第13〜20回.md の㉛）
+   ・取り違えの直し：
+       喉かわいた・かわいそう を褒め言葉（compl・compl2）と取っていた（「かわい」）→ 譲る（evThirsty・evPity）
+       「すいか食べた」を電子まねー（現代語の辞書）と取っていた → 食べる・割る・甘い 等が続く時は西瓜（電子まねーにしない）
+       「朝ごはん」を「朝ご」で切っていた（kwOf の「は」）→ 切り出しの前に「ご飯」と読む／「成績上がった」の「上」等、後ろの動詞の漢字も外す
+       現代語の辞書 えすえぬえす の「ばず？」「いいね……とな？」は、その言葉の時だけ（MOD_LINE_TAG）
+       「神社のどこが好き？」をほかの神の話に（doYouLike）・「鴉の長老って何歳？」を知ったかぶりに（know）→ カミサマへの問い（herQ3）
+       「父の誕生日」を人の子の誕生日に・「おじいちゃんが入院した」を家族の話に → 家の者の誕生日・具合（famEvt。具合は飾りなし）
+       「テスト返ってきた」をこれからの試験に・「甥っ子が生まれた」が決まり文句 → 出来事（evt2）
+   ・決まり文句・ずれた受けだった言葉：
+       少し席を外す（brb：お風呂入ってくる・ご飯食べてくる・行ってきます・すぐ戻る。トイレ・しゃわーは前からの受けのまま。問いを付けない）
+       また遊びに来るよ／また会いに来るね（promiseAgain：明日も来るね と同じ約束の受け）・来られない日（cantCome：冷たくしない。飾りと問いなし）
+       出来事・体・季節（evt2：USER_EVT2。部屋の掃除・洗濯物は前からの受けのまま。「孫が遊びに来た」は人の子が来た挨拶 arrive／greet にしない）・カミサマへの問い（herQ3：いつからおる・元気だった？ 等）・相づち（やばい・はいはい・つまんない・続けて）
+   ===================================================================== */
+(()=>{ for(const r of RULES.filter(r=>r.id==='compl'||r.id==='compl2')){ const run0=r.run; r.run=function(ctx,...a){
+  if(/(喉|のど).{0,2}(かわい)|かわいた|かわいて|かわいそ|可哀想|可哀そう/.test(String(ctx&&ctx.t||''))) return null; return run0.call(this,ctx,...a); }; } })();
+(()=>{ const e=MOD.find(z=>z.w==='でんしまねー'); if(e) e.k=new RegExp(e.k.source.replace('すいか','すいか(?![をがはも]?(食|たべ|割|わっ|わり|切|きっ|甘|あま|おいし|美味|畑|ばたけ|の種|のたね))'),e.k.flags); })();
+(()=>{ const e=MOD.find(z=>z.w==='えすえぬえす'); if(e) MOD_LINE_TAG['えすえぬえす']=e.a.map(l=>/^surprised:ばず？/.test(l)?/ばず/:/^confused:いいね……/.test(l)?/いいね/:null); })();
+(()=>{ const STRIP={上:/^(が|げ)/,取:/^(っ|れ|ら|り)/,切:/^(っ|れ|ら|り)/,出:/^(し|て|た|る|せ)/,入:/^(っ|れ|ら|り)/,降:/^(っ|り|ら|る)/,止:/^(ま|め)/,落:/^(ち|と)/,治:/^(っ|ら|り|る)/};
+  const base=kwOf; kwOf=function(body){ const s=String(body||'').replace(/ごはん/g,'ご飯'); let w=base(s);
+    try{ if(typeof w==='string'&&w.length>=2){ const i=s.indexOf(w), re=STRIP[w.slice(-1)]; if(i>=0&&re&&re.test(s.slice(i+w.length))) w=w.slice(0,-1); } }catch(_){}
+    return w; }; })();
+LAYER('kwOf','「ごはん」を「ご飯」と読んでから切り出す・後ろの動詞の漢字（上がった の 上 等）も外す（第46回）');
+
+const HER_Q3=[
+ ['Since',/いつから(ここ|この山|この神社|そこ)?(に)?(いる|居る|おる|住ん|すん)/,'smug:いつからか？ 千年前からじゃ！ ¶confused:……いや、千と少しか。途中で数えるのをやめたのじゃ。¶bliss:最初は、この土から顔を出した、小さな芽じゃった。'],
+ ['ElderAge',/(鴉|からす)(の)?(長老|ちょうろう)(って|は)?(何歳|なんさい|何才|いくつ|年齢|ねんれい|歳|とし)/,'smug:鴉の長老か？ 本人は、二百歳じゃと言うておる。¶pout:……去年も二百歳、一昨年も二百歳じゃった。¶n:鴉の歳は、毎年据え置きらしい。'],
+ ['Shrine',/(神社|じんじゃ|境内|けいだい|社|やしろ|ここ)(の|で)?(どこ|何|なに)(が)?(一番|いちばん)?(好き|すき)/,'bliss:境内のどこが好きか、とな？ ¶smug:全部じゃ！ ……と言いたいところじゃが、一つ選ぶなら、この大木の根元じゃな。¶normal:ここに座っておるとな、石段を登ってくる足音が、一番早う聞こえるのじゃ。'],
+ ['Fine',/^(元気|げんき)(だった|してた|にしてた|でした|でしたか)(か|の)?[?？]/,'happy:元気じゃったとも！ 神は病まぬからの。¶smug:……そなたが来ぬ間、少しだけ、葉が下を向いておったがな。¶normal:そなたこそ、達者でおったか？']
+];
+rule('herQ3',50.6,RX`${HER_Q3.map(x=>x[1].source).join('|')}`,(ctx)=>{ const t=String(ctx.t||''); const q=HER_Q3.find(x=>x[1].test(t)); return q?{id:'her'+q[0],g:{m:3,e:2},b:q[2]}:null; },
+  {cond:ctx=>!crisisText(String(ctx&&ctx.t||''))});
+
+/* 家の者の誕生日・具合（events 51・health 43・family 37 より先） */
+const FAM_REL=[[/祖母|おばあ|ばあちゃん|ばあば/,'婆様'],[/祖父|おじい|じいちゃん|じいじ/,'爺様'],[/叔母|伯母|おばさん/,'叔母御'],[/叔父|伯父|おじさん/,'叔父御'],
+ [/弟|おとうと/,'弟御'],[/妹|いもうと/,'妹御'],[/お母|おかあ|母/,'母御'],[/お父|おとう|父/,'父御'],[/お兄|おにい|兄|にいちゃん/,'兄上'],[/お姉|おねえ|姉|ねえちゃん/,'姉上'],
+ [/息子|むすこ/,'倅'],[/娘|むすめ/,'娘御'],[/子ども|子供|こども/,'子'],[/家族|かぞく/,'家の者']];
+const FAM_W=FAM_REL.map(x=>x[0].source).join('|');
+const FAM_BD=new RegExp('('+FAM_W+')(さん|ちゃん)?(の|が|は|も)?(誕生日|たんじょうび)');
+const FAM_SICK=new RegExp('('+FAM_W+')(さん|ちゃん)?(が|は|も)?.{0,6}?(入院|にゅういん|風邪|かぜ(ひ|を|引)|熱(が|を|出)|ねつ(が|を|だ)|具合|ぐあい|病気|びょうき|怪我|けが(し|を)|手術|しゅじゅつ|寝込|ねこ(ん|み))');
+const FAM_BD_L='happy:そなたの{rel}の、生まれた日か！ めでたいのう！ ¶smug:わしからも祝うておく。「山の上の、えら〜いカミサマも祝うておった」と、伝えるのじゃぞ！';
+const FAM_SICK_L='serious:……そなたの{rel}が、具合を悪うしておるのか。¶n:少女は大木の幹に、そっと手を当てた。¶normal:わしの力は、境内の外には届かぬが……ここから、早う良うなるよう祈っておく。¶smug:……そなたも、無理をするでないぞ。看る者が倒れては、元も子もないからの。';
+FL_CRISIS_RULES.add('famSick');
+rule('famEvt',51.5,RX`${FAM_BD.source}|${FAM_SICK.source}`,(ctx)=>{ const t=String(ctx.t||'');
+  const bd=FAM_BD.exec(t), sk=bd?null:FAM_SICK.exec(t), m=bd||sk; if(!m) return null;
+  const rel=(FAM_REL.find(x=>x[0].test(m[1]))||[0,'家の者'])[1];
+  return bd?{id:'famBirthday',g:{m:4,e:3},v:{rel},b:FAM_BD_L}:{id:'famSick',g:{m:2,e:3},v:{rel},b:FAM_SICK_L}; },
+  {cond:ctx=>{ const t=String(ctx&&ctx.t||''); return !crisisText(t)&&!/亡くな|なくなっ|死ん|しん(だ|じゃ)|(かみさま|神様|君|きみ|あなた)の/.test(t); }});
+
+/* 少し席を外す（herLife 45・food 33 より先。帰る leave 90 より後） */
+const BRB_RE=/^(ちょっと|ちょい|一回|いっかい|いったん|一旦)?[、,\s]*(.{0,8}?)(入って|はいって|食べて|たべて|浴びて|あびて|済ませて|すませて|行って|いって)(くる|来る|きます)(ね|よ|わ|ー|〜)?[!！。…〜ー\s]*$|^(行ってきます|いってきます|すぐ(戻|もど)る(ね|よ|から)?|すぐ(戻|もど)ります)[!！。…〜ー\s]*$/;
+const BRB_L={Bath:'bliss:湯浴みか。ゆっくり温もってくるのじゃぞ。¶smug:わしはここで待っておる。……湯冷めせぬうちに戻るのじゃぞ。',
+ Meal:'happy:うむ、しっかり食べてくるがよい！ ¶hungry:……甘いものが出たら、わしの分も取っておくのじゃぞ。忘れるでないぞ。',
+ Soon:'smug:うむ、すぐじゃぞ。¶normal:……千年待つのは平気じゃが、「すぐ」と言われて待つのは、なぜか長いのじゃ。',
+ Go:'happy:うむ、行ってくるがよい！ ¶smug:気をつけるのじゃぞ。……帰りに寄ってもよいぞ。わしは、ここにおるからの。'};
+for(const k of Object.keys(BRB_L)) FL_CRISIS_RULES.add('brb'+k);
+rule('brb',48.5,BRB_RE,(ctx)=>{ const t=String(ctx.t||'');
+  const k=/風呂|ふろ|湯/.test(t)?'Bath':/ご飯|ごはん|飯|めし|食べ|たべ|昼|夕|晩|朝/.test(t)?'Meal':/すぐ(戻|もど)/.test(t)?'Soon':'Go';
+  return {id:'brb'+k,g:{m:2},b:BRB_L[k]}; },
+  {cond:ctx=>{ const t=String(ctx&&ctx.t||''); return t.length<=16&&!crisisText(t)&&!GALRE.test(t)&&!/明日|あした|明後日|あさって|来週|らいしゅう|今度|こんど|週末|しゅうまつ|休み|やすみ|旅行|りょこう|海外|かいがい|といれ|トイレ|厠|しゃわー|シャワー/.test(t); }});
+(()=>{ const base=threadAfter; threadAfter=function(res){ if(/^(brb|cantCome|famSick)/.test(String(res&&res.id||C.lastRule||''))) return null; return base(res); }; })();
+LAYER('threadAfter','少し席を外す・来られない日・家の者の具合の受けの後は、問いを付けない（第46回）');
+
+/* 約束（明日も来るね と同じ受け）・来られない日 */
+(()=>{ const p=RULES.find(r=>r.id==='promiseTomorrow'); if(!p) return;
+  rule('promiseAgain',90.6,/^(また|今度|こんど|次|つぎ|絶対|ぜったい)(も|は)?(また)?[、,\s]*(遊びに|あそびに|会いに|あいに)(来る|くる|来ます|きます|行く|いく)(ね|よ|から|わ)?[!！。…〜~ー\s]*$/,p.run); })();
+const CANT_COME='surprised:のじゃっ！？ 来られぬのか！？ ¶pout:……そうか。¶n:少女は、少しのあいだ足元を見ていた。¶smug:……べ、別に構わぬぞ！ わしは千年待った神じゃ。少しくらい、どうということはない。¶normal:……来られる時が来たら、また来るのじゃぞ。待っておるからの。';
+FL_CRISIS_RULES.add('cantCome');
+rule('cantCome',50.2,/(来られ|来れ|こられ)(ない|なく|ませ|なさ)|(しばらく|暫く|当分|とうぶん|明日|あした|明後日|あさって|来週|らいしゅう|今週|こんしゅう|週末|しゅうまつ)(は|も)?(これ)(ない|なく|ませ)/,()=>({g:{m:3,e:2},b:CANT_COME}),
+  {cond:ctx=>{ const t=String(ctx&&ctx.t||''); return !/[?？]$/.test(t)&&!crisisText(t)&&!/ごめん|すまん|すみません|悪かった|わるかった|久しぶり|ひさしぶり|なかった|なくて/.test(t); }});
+
+/* 出来事・体・季節（evt 40.8 の続き。肩こりは health 43 より先に別のルールで） */
+const USER_EVT2=[
+ ['Thirsty',/(喉|のど)(が)?(かわい|乾い|渇い|からから)/,'normal:喉が渇いたか。¶smug:手水鉢の水を飲むがよい。山の湧き水じゃ、千年ものじゃぞ！ ¶n:たぶん、手を清めるための水である。'],
+ ['Pity',/^(かわいそう|可哀想|可哀そう|かわいそ)(に|だね|だよ|じゃん|すぎ|ー|〜)*[!！。…〜ー]*$/,'serious:……かわいそう、か。¶normal:そう思えるのは、そなたの心がやさしいからじゃ。¶smug:その心、大事にするのじゃぞ。……ついでに、わしのことも大事にするのじゃぞ。'],
+ ['Sniff',/鼻水|はなみず|鼻づまり|はなづまり|鼻が詰ま|鼻がつま|くしゃみ/,'surprised:鼻がぐずぐずしておるのか。¶n:少女は、柔らかそうな大きな葉を一枚ちぎって差し出した。¶normal:……ほれ、これで拭け。山の葉は、人の子の紙より優しいのじゃぞ。¶serious:……冷えるでないぞ。'],
+ ['Thin',/^(.{0,6})(痩せ|やせ)(た|ちゃった|ました|てきた)/,'confused:痩せた、とな？ ¶n:少女は、じっと{you}を見つめた。¶smug:……うむ、わからぬ！ 人の子の形は、わしにはみな同じに見えるのじゃ。¶normal:……ちゃんと食べておるなら、それでよい。'],
+ ['Nail',/爪(を)?(切|き)|つめきり/,'normal:爪を切ったか。¶smug:わしも、伸びすぎた枝は、嵐の日に風に払うてもらうのじゃ。¶bliss:……嵐のあとは、さっぱりするぞ。そなたも今、さっぱりしておるじゃろ。'],
+ ['Checkup',/健康診断|けんこうしんだん|人間どっく|にんげんどっく|検診|けんしん/,'confused:健康診断……体の吟味か？ ¶smug:わしの健康診断は、春に雀たちがやってくれる。葉を数えて、「今年も多い」と言うて終わりじゃ。¶normal:……そなたも、どこも悪うなかったなら、よいがの。'],
+ ['Chore',/(ごみ)(を)?(出し|だし|出した|捨て|すて)|皿洗い|さらあらい|皿(を)?洗|洗濯(?!物)|せんたく(?!もの)|洗い物|あらいもの|掃除機|そうじき|(家|いえ|風呂|ふろ|といれ)(の|を)?(掃除|そうじ)|(布団|ふとん)(を)?(干|ほ)/,'smug:家の務めを果たしたか。感心じゃのう！ ¶normal:人の子の暮らしは、細かな務めの積み重ねじゃな。¶smug:……わしの務めは、日向ぼっこだけじゃ。楽なものじゃ！'],
+ ['Errand',/(郵便局|ゆうびんきょく|銀行|ぎんこう|役所|やくしょ|役場|やくば)(に|へ|で|まで)?(行|い|寄)/,'normal:用事を済ませてきたか。¶confused:人の子は、あちこち回らねばならぬのじゃな。¶smug:……わしは、ここから一歩も動かずに済む。神の特権じゃ！'],
+ ['Graduate',/卒業|そつぎょう/,'happy:卒業か！ めでたいのう！ ¶bliss:……春になると、麓の寺子屋から、別れの歌が聞こえてきたものじゃ。¶smug:そなたも、年輪をひとつ増やしたのう。'],
+ ['Enter',/入学|にゅうがく/,'happy:新しい学び舎か！ めでたいのう！ ¶smug:新しい土は、最初は根を張りにくいものじゃ。……じゃが、そなたならすぐ馴染む。わしが保証する！'],
+ ['EnterWork',/入社|にゅうしゃ|就職|しゅうしょく/,'happy:新しい奉公先か！ めでたいのう！ ¶normal:……最初のうちは、気を張って疲れるじゃろう。¶smug:疲れたら、ここで休んでゆけ。わしの木陰は、いつでも空いておる！'],
+ ['Offer',/内定|ないてい/,'surprised:内定……奉公先が決まったということか！？ ¶happy.hop:めでたいのう！ ¶smug:そなたの働きぶりは、わしが一番よう知っておる。見る目のある奉公先じゃな！'],
+ ['License',/(資格|しかく).{0,3}((取|と)(っ|れ)|受かっ|うかっ)/,'happy:資格を取ったか！ 励んだのじゃな。¶smug:わしも、この山の神の資格を持っておる。……誰にもろうたかは、覚えておらぬがな。'],
+ ['GradeUp',/(成績|せいせき|点数|てんすう)(が)?(上が|あが|伸び|のび|良く|よく|よかっ|良かっ)/,'happy.hop:成績が上がったか！ えらいのう！ ¶smug:……わしの葉の御利益じゃな。そうじゃろう？ そうじゃと言え！'],
+ ['GradeDown',/(成績|せいせき|点数|てんすう)(が)?(下が|さが|悪|わる|落ち|おち)/,'normal:成績が下がったか。¶smug:木にも、伸びぬ年がある。じゃが、そういう年はな、根がちゃんと伸びておるのじゃ。見えぬところでな。'],
+ ['TestBack',/(てすと|試験|しけん)(が|の|も)?(結果|けっか)?(が)?(返って|かえって|返され|かえされ|戻って|もどって|出た|でた)/,'surprised:試験の結果か！ ¶confused:……して、どうであった？ よかったのか？ よくなかったのか？ ¶smug:よければ褒めてやる。よくなければ……もっと褒めてやる。'],
+ ['NewTerm',/新学期|しんがっき|くらす替え|くらすがえ|新年度|しんねんど/,'normal:新しい学期か。¶bliss:木にも、新しい年輪ができはじめる頃がある。……少し、そわそわするものじゃ。¶smug:じゃが、案ずるな。そなたは、わしが見込んだ人の子じゃからな！'],
+ ['Transfer',/転校|転勤|てんきん/,'surprised:な、なんと、移るのか！？ ¶serious:……遠くへ行ってしまうのか？ ¶pout:……べ、別に、寂しくなど……。¶normal:ここへは、また来られるのじゃろうな？'],
+ ['Trip',/出張|しゅっちょう/,'surprised:出張……遠くまで奉公しに行くのか！ ¶normal:知らぬ土地の水は、体に合わぬことがある。気をつけるのじゃぞ。¶smug:……土産話は、待っておるからの。'],
+ ['Deadline',/締め切り|締切|しめきり|〆切/,'confused:締め切り……期日のことか。¶serious:……期日に追われておるのか。¶smug:案ずるな。期日というものは、過ぎてしまえば忘れるものじゃ。わしは千年分の期日を、ぜんぶ忘れた！ ¶n:それは案じたほうがいい気がする。'],
+ ['Blackout',/停電|ていでん/,'surprised:灯りが消えたのか！ ¶smug:ふふん、境内の夜は、いつも真っ暗じゃぞ。月と星だけじゃ。¶bliss:……暗いと、星がよう見えたじゃろう？'],
+ ['Coworker',/(同僚|どうりょう|先輩|せんぱい|後輩|こうはい|上司|じょうし)(が|も)?(辞め|やめた|やめちゃ|退職|たいしょく)/,'normal:奉公の仲間が、辞めてしもうたか。¶bliss:……人の子は、それぞれの道を行くのう。¶smug:寂しいなら、そのぶん、ここへ来ればよい。わしは辞めぬぞ。神じゃからな！'],
+ ['Baby2',/(甥っ子|姪っ子|おいっこ|めいっこ)(が)?(生まれ|うまれ|産まれ)/,USER_EVT[0][2]],
+ ['Visitor',/(姪|甥|孫|めいっこ|おいっこ)(っ子)?(たち|達)?(が)?(遊びに|あそびに)?(来|き)(た|て|る|ちゃ)/,'happy:客人が来たか！ 賑やかでよいのう。¶smug:わしの話もしてやるとよいぞ。「山の上に、世界一可愛い神様がおる」とな！ ¶normal:……小さい子は、すぐに大きゅうなる。今のうちに、よう遊んでやるのじゃぞ。'],
+ ['Neighbor',/(隣|となり|近所|きんじょ|上の階|下の階)(の)?(人|ひと|家|いえ|部屋|へや)?(が|は)?(うるさ|騒が|さわが|やかまし)/,'pout:隣が騒がしいのか。¶smug:わしの隣は、狸の一家じゃ。月夜になると、ぽんぽこ腹鼓を打ちおる。¶normal:……お互い、苦労するのう。'],
+ ['Traffic',/渋滞|じゅうたい/,'confused:渋滞……車の行列のことか。¶smug:わしは、蟻の行列なら毎日見ておる。蟻は、詰まらずにちゃんと進むぞ。¶smug:人の子も、蟻に習うがよい！'],
+ ['NoFish',/(釣れ|魚が(釣れ|つれ))(なかっ|ない|ません|なくて|なさ)|ぼうずだった|坊主だった/,'pout:釣れなんだか。¶smug:魚が、そなたの竿を怖がって逃げたのじゃ。……つまり、そなたが強すぎたということじゃな！'],
+ ['Nabe',/^(今日は|昨日は|夜は|夕飯は|晩ご飯は)?(鍋|なべ)(を)?(した|やった|食べた|たべた|だった|ぱーてぃ|にした)|鍋(を)?(囲|かこ)/,'happy:鍋か！ 皆で一つの鍋を囲むのじゃろ？ ¶bliss:……よいのう。囲炉裏の周りが賑やかなのは、よいことじゃ。¶hungry:……甘い鍋は、ないのか？ おしるこは鍋で炊くぞ。'],
+ ['Knit',/編み物|あみもの|(まふらー|せーたー|手袋|てぶくろ|帽子|ぼうし)(を)?(編|あん)/,'surprised:編み物か！ 糸から布をこしらえるのじゃな。¶smug:わしも得意じゃぞ。……蜘蛛に習うた。¶n:たぶん、見ていただけだ。'],
+ ['SeasonPrep',/(扇風機|せんぷうき|こたつ|炬燵|すとーぶ|暖房|だんぼう|冷房|れいぼう|ひーたー|毛布|もうふ|湯たんぽ|ゆたんぽ)(を)?(出し|だし|しまっ|仕舞っ|片付け|かたづけ|つけ|付け|入れ)|衣替え|ころもがえ/,'normal:季節の支度か。¶bliss:人の子は、季節が変わるたびに、家の中を入れ替えるのじゃな。¶smug:わしは、葉を入れ替えるだけで済む。楽なものじゃ！'],
+ ['Warm',/(暖か|あったか|あたたか|温か)(い|く)(ね|な|よ|です|。|！|!|〜|ー)*$|^(今日|きょう)(は|も)?(暖か|あったか|あたたか)/,'bliss:暖かいか。それは何よりじゃ。¶smug:暖かい日は、わしの葉も、ふわっと開くのじゃ。……見えぬか？ よう見よ。'],
+ ['ShortDay',/(?<![一毎]|いち)日(が|も)?(短く|みじかく|短い|みじかい|暮れるの(が)?早|くれるの(が)?はや)/,'normal:日が短うなったのう。¶bliss:陽が傾くのが早うなると、山の木々が、冬の支度を始めるのじゃ。¶smug:わしは冬でも緑じゃがな！ 常緑の神じゃ！'],
+ ['LongDay',/(?<![一毎]|いち)日(が|も)?(長く|ながく|延び|のび)/,'bliss:日が長うなったのう。¶smug:陽をたっぷり浴びられる、よい季節じゃ。……わしの双葉も、少し伸びた気がする。'],
+ ['Dry',/乾燥|空気(が)?(乾い|かわい)/,'pout:乾いておるのか。わしも、乾いた日は葉がかさかさする。¶smug:……恵みの雨を、少し祈っておいてやろう。境内の中だけじゃがな！'],
+ ['Frost',/霜|しもばしら/,'sleepy:霜か……。根っこが冷えるのう。¶smug:……じゃが、霜の降りた朝の境内は、きらきらして綺麗じゃぞ。わしの次にな！']
+];
+FL_CRISIS_RULES.add('evGradeDown');
+for(const r of RULES.filter(r=>/^(arrive|arrive_x|greet|greet2)$/.test(r.id))){ const run0=r.run; r.run=function(ctx,...x){ if(USER_EVT2.find(e=>e[0]==='Visitor')[1].test(String(ctx&&ctx.t||''))) return null; return run0.call(this,ctx,...x); }; } /* 「孫が遊びに来た」は人の子が来た挨拶にしない */
+rule('evt2',40.9,RX`${USER_EVT2.map(x=>x[1].source).join('|')}`,(ctx)=>{ const t=String(ctx.t||''); const q=USER_EVT2.find(x=>x[1].test(t)); if(!q) return null;
+  if(q[0]==='TestBack'&&/悪|わる|だめ|駄目|良|よか|落ち|おち|赤点|あかてん|満点|まんてん|百点|ひゃくてん/.test(t)) return null; /* 結果まで言った文は、今までの受けに */
+  return {id:'ev'+q[0],g:{m:3,e:2},b:q[2]}; },{cond:ctx=>{ const t=String(ctx&&ctx.t||''); return !crisisText(t)&&!lowOrTired(t); }});
+const STIFF_L='serious:肩が凝っておるのか。¶smug:……ほれ、わしが叩いてやろう。とん、とん。¶n:小さな拳が、肩のあたりを叩いた。力はほとんど入っていない。';
+rule('evStiff',43.6,/肩(が|も)?(こっ|凝|こる|こり|痛|いた|張|ぱんぱん|ばきばき)|かたこり/,()=>({g:{m:3,e:2},b:STIFF_L}),{cond:ctx=>{ const t=String(ctx&&ctx.t||''); return !crisisText(t)&&!/肩(が|も)?凝|肩こり|かたこり/.test(t); }}); /* 肩が凝った・肩こり は前からの受け（verbTalk。同じ台詞） */
+
+/* 相づち（やばい・はいはい・つまんない・続けて） */
+const AIZ2={yabai:'surprised:やばい、とな！？ ¶confused:……よいやばいか？ 悪いやばいか？ 人の子の「やばい」は、どちらか分からぬから困るのじゃ。',
+ haihai:'pout:「はい」は一回でよい！ ¶smug:神の前では、背筋を伸ばして「はい」じゃ。……ほれ、もう一度。'};
+rule('yabai',16.5,/^(やばい|やばっ|やべえ|やべー|やばすぎ|やばくない)(ね|よ|な|って|わ)?[!！。〜ー…w笑?？]*$/,()=>AIZ2.yabai);
+rule('haihai',16.5,/^(はいはい|はいはーい|へいへい|はいはいはい)[!！。〜ー…w笑]*$/,()=>AIZ2.haihai);
+(()=>{ const b=RULES.find(r=>r.id==='bored'), c=RULES.find(r=>r.id==='continue');
+  if(b) rule('bored2',33.1,/^(つまんない|つまんな|つまらん)(ー|〜|い|ね|よ|な)*[!！。…w]*$/,b.run,b.cond?{cond:b.cond}:undefined);
+  if(c) rule('continue2',17.1,/^(続けて|つづけて)/,c.run); })();
+
+
+/* =====================================================================
+   第47回：描画の軽量化（スマホで全体がもっさりする、とユーザーの指摘。tests/check_render.js）
+   ・重さの元：カミサマの描画（1 秒に約 60 回）で、WebGL の描画面（ランタイムの GLMeshes）を、まとまり（体・前髪・横髪）ごとに
+     その大きさへ合わせ直していた（begin の「半分より小さければ縮める」）。1 回の描画で 3 回作り直し、Mac の Chrome で描画 1 回 7.3ms のうち 6ms ほどがこれ
+   ・grow（作り直さない）：一番大きいまとまりに合わせて大きくする時だけ作り直す。前のまとまりの描き残しを使わないよう、描く前に描画面と
+     影の下書き（shadowReceiver）を全部まっさらにする。絵は同じ（ブラウザで画素を比べて、255 段階の 2 以下が数画素）。Mac の Chrome で 7.3ms → 0.9ms
+   ・ただし iPhone と同じ WebKit のシミュレーターでは、作り直しより「写す」所が重く、grow が速いとは限らなかった
+     → 端末ごとに、最初の描画の間（約 140 回・60 回/秒で 2〜3 秒）に両方の時間を測り、grow が 1 割以上速い時だけ grow にする（真ん中の値で比べる）
+   ・確認用：?glmode=old／grow で決め打ち。?fps=1 の時は、右上に選んだ描き方と測った時間を出す
+   ・ランタイム（kamisama.js）は書き換えず、カミサマの描画面 RIG.ch の drawAttached を包み、その時だけ GLMeshes の begin・meshMask を差し替える
+   ===================================================================== */
+const GL_TUNE={forced:(()=>{ try{ const m=new URLSearchParams(location.search).get('glmode'); return m==='old'||m==='grow'?m:null; }catch(_){ return null; } })(),
+  pick:null,n:0,t:{old:[],grow:[]},med:null};
+const GLT_WARM=20, GLT_BLOCK=30, GLT_ORDER=['old','grow','old','grow'];
+function glTuneReset(){ GL_TUNE.pick=null; GL_TUNE.n=0; GL_TUNE.t={old:[],grow:[]}; GL_TUNE.med=null; }
+function glTuneMode(){ if(GL_TUNE.forced) return GL_TUNE.forced; if(GL_TUNE.pick) return GL_TUNE.pick;
+  if(GL_TUNE.n<GLT_WARM) return 'old'; return GLT_ORDER[Math.min(GLT_ORDER.length-1,Math.floor((GL_TUNE.n-GLT_WARM)/GLT_BLOCK))]; }
+function glTuneRecord(mode,ms){ if(GL_TUNE.forced||GL_TUNE.pick) return;
+  if(GL_TUNE.n>=GLT_WARM) GL_TUNE.t[mode].push(ms); GL_TUNE.n++;
+  if(GL_TUNE.n>=GLT_WARM+GLT_BLOCK*GLT_ORDER.length){ const med=a=>{ const s=a.slice().sort((x,y)=>x-y); return s.length?s[s.length>>1]:Infinity; };
+    const mo=med(GL_TUNE.t.old), mg=med(GL_TUNE.t.grow); GL_TUNE.med={old:mo,grow:mg}; GL_TUNE.pick=mg<mo*0.9?'grow':'old'; glTuneShow(); } }
+/* GLMeshes に、作り直さない begin と、影の下書きをまっさらにする meshMask を用意する（元の物も控える） */
+function glTunePatch(G){ if(!G||G.__glt) return G; G.__glt=1;
+  G.__b0=G.begin; G.__mm0=G.meshMask;
+  G.__grow=function(w,h){ const gl=this.gl;
+    if(w>this.W||h>this.H){ this.W=Math.max(this.W,Math.ceil(w/128)*128); this.H=Math.max(this.H,Math.ceil(h/128)*128); this.cv.width=this.W; this.cv.height=this.H; }
+    this.w=w; this.h=h; gl.disable(gl.SCISSOR_TEST); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.viewport(0,this.H-h,w,h); gl.enable(gl.SCISSOR_TEST); gl.scissor(0,this.H-h,w,h);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(this.pr); gl.uniform2f(this.uR,w,h); };
+  G.__mmG=function(...a){ const gl=this.gl, r=this.shadowReceiver;
+    if(r&&r.W===this.W&&r.H===this.H){ gl.bindFramebuffer(gl.FRAMEBUFFER,r.framebuffer); gl.disable(gl.SCISSOR_TEST); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.enable(gl.SCISSOR_TEST); gl.bindFramebuffer(gl.FRAMEBUFFER,null); }
+    return this.__mm0.apply(this,a); };
+  return G; }
+function glTuneUse(G,mode){ if(!G||!G.__glt) return; G.begin=mode==='grow'?G.__grow:G.__b0; G.meshMask=mode==='grow'?G.__mmG:G.__mm0; }
+let GLT_TAG=null;
+function glTuneShow(){ if(!GLT_TAG) return; const m=glTuneMode(), M=GL_TUNE.med;
+  GLT_TAG.textContent='描き方：'+(m==='grow'?'作り直さない':'前のまま')+(GL_TUNE.forced?'（決め打ち）':M?`（前 ${M.old.toFixed(1)}ms／作り直さない ${M.grow.toFixed(1)}ms）`:'（測定中）'); }
+try{ if(new URLSearchParams(location.search).get('fps')==='1'){ GLT_TAG=document.createElement('div'); GLT_TAG.id='glTag';
+  GLT_TAG.style.cssText='position:fixed;right:6px;top:28px;z-index:9999;font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;pointer-events:none;';
+  document.body.appendChild(GLT_TAG); glTuneShow(); } }catch(_){}
+(()=>{ const base=rigInit; rigInit=async function(...a){ const r=await base.apply(this,a);
+  try{ const ch=RIG.ch; if(ch&&!ch.__glt){ ch.__glt=1; const d0=ch.drawAttached;
+    ch.drawAttached=function(...x){ const G=this.gl; if(!G||this.glFailed) return d0.apply(this,x);
+      glTunePatch(G); const m=glTuneMode(); glTuneUse(G,m); const t=performance.now();
+      try{ return d0.apply(this,x); } finally{ glTuneRecord(m,performance.now()-t); } }; } }catch(_){}
+  return r; }; })();
+LAYER('rigInit','カミサマの WebGL の描画面を作り直さない描き方を、端末ごとに速い方で選ぶ（drawAttached を包む。第47回）');
+
 
 /* ============ OVERLAYS ============ */
 function showStart(){
