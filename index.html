@@ -1332,7 +1332,7 @@ button{touch-action:manipulation}
     constructor(model, images, opts) {
       this.model = model; this.img = images;
       this.opts = Object.assign({ autoBlink: true, blinkInterval: 3.2, autoEyeMove: true, idle: 1, breath: 1, breathSpeed: 0.28,
-        wind: 1, physics: true, renderer: 'auto', eyeTune: 0 }, opts || {});
+        wind: 1, physics: true, renderer: 'auto', eyeTune: 0, lineScale: 1 }, opts || {});
       this.face = JSON.parse(JSON.stringify(FACE)); if (opts && opts.face) Object.assign(this.face, opts.face);
       this.base = defaults(); this.p = defaults(); this.tween = null;
       this.time = 0; this.motions = []; this.look = null; this.lookCur = [0, 0];
@@ -1776,7 +1776,8 @@ button{touch-action:manipulation}
       return mul(base, mul(this.Th, mul(tr(MM.pos[0] + MM.par[0] * P.headX + F.dx, MM.pos[1] + MM.par[1] * P.headY + F.dy + P.mouthY + this.mouthFB + MM.openDY * clamp(P.mouthOpen, 0, 1)), sc(F.sx, F.sy))));
     }
     _drawMouth(ctx, base) {
-      const MM = this.model.mouth, P = this.p, g = mouthShapes(MM, P);
+      // opts.lineScale：口の線の太さの倍率（口の調整 2026-10-02。描画面を引き伸ばして表示する端末で、にじんで太く見えるのを細くする）
+      const ls = this.opts.lineScale || 1, MM = this.model.mouth, P = ls !== 1 ? Object.assign({}, this.p, { mouthLine: this.p.mouthLine * ls }) : this.p, g = mouthShapes(MM, P);
       setT(ctx, this._mouthMatrix(base));
       ctx.beginPath(); g.fill.forEach((v, i) => (i ? ctx.lineTo(v[0], v[1]) : ctx.moveTo(v[0], v[1]))); ctx.closePath();
       ctx.fillStyle = MM.fill; ctx.fill();
@@ -1968,13 +1969,15 @@ button{touch-action:manipulation}
          第39回：会話の分岐 #7 年当てと仕事（問い kami_age・KAMI_AGE・age／age_x の run・age_guess の o を年で・userWork の run を中身で WORK_KIND・job_tired の まあまあ）
                  ／#9 流行の訂正（ルール misAgree・misTwist・fix と mod_true の n の三度目は必ず HERI3・思い込みの直後の問いへの 違うよ は訂正に）
          目元の調整（2026-10-02・会話の回とは別）：描画ランタイムの eyeTune。ゲームの標準は 1（調整した目）。?eye=0 で元の目。EYE_TUNE_GAME・rigInit を包んだ
+         口の調整（2026-10-02・会話の回とは別）：首をかしげる表情 confused・悲しい表情 sad の口を ∧ に（rigExpressions を包んだ）・引き伸ばす端末で口の線を細く（rigLineScale・rigResize を包んだ・ランタイムの _drawMouth に opts.lineScale）
          第40回：分岐と辞書 A 取り違えの直し（TOPIC_LINES・topicWrap で herLife／study／sports／travel の言い回しを話題で選ぶ・MOD_LINE_TAG を mod 以外の通り道にも（pick を包む・MOD_CUR）・
                  broke／takeHome は譲る・userWork に試験に落ちた／辞めた／カミサマの仕事・ルール herEver／herEverAny／herColor・tired の眠くならない？・know の「〜ことは？」）
          第41回：分岐と辞書 B 気持ちの言葉（ルール feel（FEEL：怒り・悔しさ・面倒・うらやましい・照れ・懐かしさ・安心・安らぎ・驚き・おめでとう・気持ち悪い）・feelAtMe）
          第42回：分岐と辞書 C お願い・カミサマへの問い・D 出来事（ルール req（REQ）・herQ／herQ2（HER_Q）・evt（USER_EVT））
          第43回：分岐と辞書 E 身近な名詞 25 語（VOCAB_DAILY2 を VOCAB に）
          第44回：七十二候は神社を直し終えてから（kouBeats・kouSettingsEntry を包む。初めての時だけ説明 KOU_INTRO）
-         台詞：第13〜44回の Claude 作の台詞は本採用（docs/台詞の一覧_第13〜20回.md）
+         第45回：時計の暦より前に直し終えていた記録を、次に開いた時に時計の暦へ（clockMigrateDue・CLOCK_MIGRATE・clockArrive を包む。S.clockMigrated）
+         台詞：第13〜45回の Claude 作の台詞は本採用（docs/台詞の一覧_第13〜20回.md）
      7. OVERLAYS / BOOT
    ■ 返答の流れ respond(raw)
      C.expect あり → handleExpect → handleThread（問いへの答え）
@@ -15437,6 +15440,40 @@ const kouOpen=()=>S.stage>=UPG.length;
 (()=>{ const base=kouBeats; kouBeats=function(...a){ if(!kouOpen()) return null; const first=!(Array.isArray(S.kouLog)&&S.kouLog.length); const r=base(...a);
   try{ if(r&&first) return r.concat(P(KOU_INTRO)); }catch(_){} return r; }; })();
 (()=>{ const base=kouSettingsEntry; kouSettingsEntry=function(...a){ if(!kouOpen()) return; return base(...a); }; })();
+
+/* =====================================================================
+   口の調整（2026-10-02・会話の回とは別）：首をかしげる表情（confused）の閉じた口がギザギザに見えた（ユーザーの指摘）
+   ・口の形は閉じた口の 3 つの形（ω・∧・ギザギザ）を混ぜて作る。confused は ∧ とギザギザの間（mouthForm -0.5）に波（mouthWave 0.5）を足していた
+   ・眠い表情（sleepy）と同じなめらかな ∧ にする（mouthForm 0・波なし）。眉・目・頬は元のまま
+   ・悲しい表情（sad。mouthForm -0.6 で同じギザギザ）も ∧ に（ユーザーが ∧・口角下げ・山 2〜3 個の見本から選んだ）
+   ・確かめ方 tests/eye/check_mouth.js（口の線の上下の折り返しを数える）
+   ===================================================================== */
+(()=>{ const base=rigExpressions; rigExpressions=function(...a){ const r=base.apply(this,a);
+  try{ const E=Kamisama.EXPRESSIONS; for(const k of ['confused','sad']) if(E[k]) Object.assign(E[k],{mouthForm:0,mouthWave:0}); }catch(_){} return r; }; })();
+LAYER('rigExpressions','首をかしげる表情・悲しい表情の口を、なめらかな ∧ に（口の調整 2026-10-02）');
+/* 口の線の太さ：描画面は画面の画素の 2 倍までで描く（重さのため）。iPhone 等の 3 倍の画面では 1.5 倍に引き伸ばされ、線がにじんで太く見える（ユーザーの指摘）。
+   引き伸ばす割合 st に合わせて口の線を細くする（st 1.5 → 0.75。下限 0.65。細くしすぎると淡くなる）。描画面の大きさ・重さは変えない */
+function rigLineScale(dpr){ const d=dpr||1, st=d/Math.min(2,d); return st>1?Math.max(.65,Math.round((1-.5*(st-1))*100)/100):1; }
+(()=>{ const base=rigResize; rigResize=function(...a){ const r=base.apply(this,a);
+  try{ if(RIG.ch) RIG.ch.setOptions({lineScale:rigLineScale(window.devicePixelRatio)}); }catch(_){} return r; }; })();
+LAYER('rigResize','画面を引き伸ばして表示する端末では、口の線を細くする（口の調整 2026-10-02）');
+
+/* =====================================================================
+   第45回：時計の暦より前に神社を直し終えていた記録（tests/check_clock.js の第45回）。ユーザーの希望
+   ・神社を直し終えていて、まだ一度も時計の暦を使っていない記録（S.clockDay がない・S.calMode が clock でない）は、次に開いた時に一度だけ（S.clockMigrated）
+     時計の暦にして、軽い説明（CLOCK_MIGRATE。台詞は Claude 作。docs/台詞の一覧_第13〜20回.md の㉚）。知らせ済みの印 S.calOpenSaid も立てる
+     前は、古い知らせ（暦を選べる）を見ていた記録は時計の暦にならず、まだ見ていなかった記録も次の寝た朝・帰った翌日の場面まで待っていた
+   ・その時は、来た時の場面（clockArrive）を出さない（説明と重ねない）
+   ・一度時計の暦を使ってから自分で元の暦に戻した記録（S.clockDay がある）・まだ直し終えていない記録は、そのまま
+   ===================================================================== */
+const CLOCK_MIGRATE='smug:……おお、来たか。のう、そなたが来ぬ間に、わしの年輪が、そなたの刻とつながったのじゃ。¶n:これからは、端末の時計どおりに、朝・昼・夕方・夜がめぐる。動ける回数の決まりはなくなり、帰る時は「またね」。¶n:元の暦に戻したい時は、「きろく」の「暦」から。¶smug:……麓の茶屋から、季節の甘味も届くようになったぞ。「甘味をあげる」を見てみるがよい！';
+let CLOCK_MIG_NOW=0;
+const clockMigrateDue=()=>!!(S.started&&calOpen()&&S.calMode!=='clock'&&!S.clockDay&&!S.clockMigrated);
+(()=>{ const base=clockArrive; clockArrive=function(...a){ if(CLOCK_MIG_NOW){ CLOCK_MIG_NOW=0; try{ clockTick(); }catch(_){} return null; } return base(...a); }; })();
+LAYER('clockArrive','時計の暦へ移した直後は、来た時の場面を出さない（説明と重ねない。第45回）');
+setTimeout(()=>{ try{ if(!clockMigrateDue()) return;
+  S.clockMigrated=1; S.calOpenSaid=1; calSetMode('clock'); CLOCK_MIG_NOW=1; clockMuteUntil=Date.now()+3000; save(); renderHUD();
+  play(P(CLOCK_MIGRATE)); }catch(_){} },250);
 
 /* ============ OVERLAYS ============ */
 function showStart(){
