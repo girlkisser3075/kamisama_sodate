@@ -939,6 +939,23 @@ button{touch-action:manipulation}
 
   // ------------------------------------------------------------------ web-only fixes to the traced eye / brow art
   const LASH_INK = '#24170f';                      // lashes and closed-eye line: one dark colour, no light rim
+  // 参考画像のまぶた補正は固定値なので、形状の初期化時に一度だけ計算する。
+  const REFERENCE_LID_OFFSETS = [
+    [237, 0, 0], [251, 0, 0], [258, 0.3, 3.0],
+    [264, 1.3, 3.0], [274, 1.4, 2.9], [284, 1.7, 3.4],
+    [292, 2.7, 4.0], [299, 3.0, 3.0], [305, 2.0, 1.7],
+    [310.51, 0, 0]
+  ];
+  function referenceLidOffset(x, inner) {
+    const col = inner ? 2 : 1;
+    for (let i = 1; i < REFERENCE_LID_OFFSETS.length; i++) {
+      if (x <= REFERENCE_LID_OFFSETS[i][0]) {
+        const a = REFERENCE_LID_OFFSETS[i - 1], b = REFERENCE_LID_OFFSETS[i];
+        return lerp(a[col], b[col], sstep(a[0], b[0], x));
+      }
+    }
+    return 0;
+  }
   const ellipseSub = (cx, cy, rx, ry) => {
     const k = 0.5523;
     return [[[cx + rx, cy], [cx, cy + ry], [cx - rx, cy], [cx, cy - ry]],
@@ -959,9 +976,27 @@ button{touch-action:manipulation}
         E.glow = { cx, lidY: lidC(E.lid, cx), w: Math.max(...gx) - Math.min(...gx), h: Math.max(...gy) - Math.min(...gy), green, color: yel.fill };
         E.iris = E.iris.filter(it => it !== yel);
       }
+      // 瞳の内部の補正は初期化時に一度だけ計算する。
+      const pc = s === 'L' ? [277.0999, 273.8051] : [404.7501, 277.6851];
+      const angle = s === 'L' ? 5 * Math.PI / 180 : 0, ca = Math.cos(angle), sa = Math.sin(angle);
+      const sx = 1.20, sy = 1.08;
+      const rotate = p => [ca * p[0] - sa * p[1], sa * p[0] + ca * p[1]];
+      const pupilPoint = p => { const q = rotate([(p[0] - pc[0]) * sx, (p[1] - pc[1]) * sy]); return [pc[0] + q[0], pc[1] + q[1]]; };
+      const pupilVector = v => rotate([v[0] * sx, v[1] * sy]);
+      const shiftedGreen = s === 'L' ? Object.assign({}, green, { sub: green.sub.map(sp => [sp[0].map(p => [p[0] - 1, p[1] - 2.5]), sp[1], sp[2], sp[3]]) }) : green;
+      const adjustedPupil = Object.assign({}, pupil, { sub: pupil.sub.map(sp => [sp[0].map(pupilPoint), sp[1].map(pupilVector), sp[2].map(pupilVector), sp[3]]) });
+      E.irisAdjusted = E.iris.map(it => it === green ? shiftedGreen : it === pupil ? adjustedPupil : it);
+      E.glowAdjusted = s === 'L' ? Object.assign({}, E.glow, { cx: 275.85, lidY: E.glow.lidY + 0.2, w: E.glow.w * 0.94, green: shiftedGreen }) : E.glow;
       for (const it of E.lash) { it.fill = LASH_INK; it.stroke = { color: LASH_INK, width: 1.5, cap: 'round', join: 'round' }; }
       E.band.fill = LASH_INK; E.band.stroke = { color: LASH_INK, width: 1, cap: 'round', join: 'round' };
       E.tune = eyeTuneLash(E);
+      if (s === 'L' && E.tune) {
+        E.tune.referenceOffsets = E.tune.lash.map((p, j) => referenceLidOffset(p[0], j < E.tune.N));
+        // 描画中に変わるのは始点と最初の出力ハンドルだけ。ほかの座標は再利用する。
+        E.creaseWork = E.crease.items.map(it => it.sub.map(sp => [
+          sp[0].map(p => p.slice()), sp[1].map(p => p.slice()), sp[2].map(p => p.slice()), sp[3]
+        ]));
+      }
     }
     // right brow: the traced shape is lopsided and its outline sits 1 px off its fill -> mirror the left brow
     const L = M.brows.L, R = M.brows.R;
@@ -1809,7 +1844,22 @@ button{touch-action:manipulation}
       // 目元の調整（2026-10-02）：開き 1 → sw でまつ毛が閉じ線の形になり、その先は閉じ線（_drawBand）。白目と瞳はまつ毛の外側の縁より内側だけ
       let lashPts = null, lashM = 0, lashW = null;
       if (this.opts.eyeTune >= 1 && E.tune && o > EYE_TUNE.sw) {
-        const T = E.tune, N0 = T.N, W = T.lash.map(p => [p[0], fy(p[0], p[1])]); lashM = sstep(1, EYE_TUNE.sw, o);
+        const T = E.tune, N0 = T.N;
+        const rk = s === 'L' ? sstep(EYE_TUNE.sw, 1.3, o) : 0;
+        const W = s === 'L'
+          ? T.lash.map((p, j) => [p[0], fy(p[0], p[1]) + rk * T.referenceOffsets[j]])
+          : T.lash.map(p => [p[0], fy(p[0], p[1])]);
+        lashM = sstep(1, EYE_TUNE.sw, o);
+        if (s === 'L') {
+          // 白目に接する内縁を保ち、外縁だけを少し寄せて太さを約8％減らす。
+          // まばたきで元の閉じ線へなめらかに戻す。
+          const thin = 0.08 * (1 - lashM);
+          for (let j = N0; j < W.length; j++) {
+            const q = W[2 * N0 - 2 - j];
+            W[j][0] = lerp(W[j][0], q[0], thin);
+            W[j][1] = lerp(W[j][1], q[1], thin);
+          }
+        }
         const B = lashM > 0 ? bandPoly(E, o, this.p.lidThick, this.p.eyeSmile, this.p.eyeDown) : null;
         const mi = j => { const i = j < N0 ? j : 2 * N0 - 2 - j; return Math.pow(lashM, 1 + EYE_TUNE.lag * T.tail[i]); };   // 目尻側は遅れて変わる
         lashPts = B ? W.map((p, j) => { const w = mi(j); return [lerp(p[0], B[j][0], w), lerp(p[1], B[j][1], w)]; }) : W; lashW = W;
@@ -1820,8 +1870,9 @@ button{touch-action:manipulation}
         // iris, masked by the (folded) white of the eye
         ctx.save(); ctx.beginPath(); for (const subs of scl) for (const sp of subs) pathSub(ctx, sp); ctx.clip();
         ctx.translate(clamp(P.eyeX, -1.3, 1.3) * E.irisRange[0], clamp(P.eyeY, -1.3, 1.3) * E.irisRange[1]);
-        for (const it of E.iris) drawItem(ctx, it);
-        if (E.glow) this._drawGlow(ctx, E.glow);
+        for (const it of (tuned && E.irisAdjusted ? E.irisAdjusted : E.iris)) drawItem(ctx, it);
+        const glow = tuned && E.glowAdjusted ? E.glowAdjusted : E.glow;
+        if (glow) this._drawGlow(ctx, glow);
         ctx.restore();
       };
       if (lashPts) {   // 白目と瞳は、まつ毛の外側の縁より内側に描く（線の外に白目を出さない）。目尻の先が縮んだら、その下は白目の輪郭の少し外（T.wide）で区切る
@@ -1862,7 +1913,19 @@ button{touch-action:manipulation}
         dy += -9 * sm * Math.sin(Math.PI * t) - 2.5 * sm + dn * (-1.8 * Math.sin(Math.PI * t));
         dy -= 3.5 * clamp(1 - o / 0.6, 0, 1);   // keep clear of the (thicker) closed line
       }
-      ctx.translate(0, dy); for (const it of E.crease.items) drawItem(ctx, it, null, LINE.crease);
+      ctx.translate(0, dy);
+      const rk = tuned && s === 'L' ? sstep(EYE_TUNE.sw, 1.3, o) : 0;
+      for (let i = 0; i < E.crease.items.length; i++) {
+        const it = E.crease.items[i], subs = rk > 0 ? E.creaseWork[i] : null;
+        if (subs) for (let j = 0; j < subs.length; j++) {
+          const sp = it.sub[j], work = subs[j];
+          work[0][0][0] = sp[0][0][0] - 9.5 * rk;
+          work[0][0][1] = sp[0][0][1] + 0.5 * rk;
+          work[2][0][0] = sp[2][0][0] + 9.5 * rk;
+          work[2][0][1] = sp[2][0][1] - 0.5 * rk;
+        }
+        drawItem(ctx, it, subs, LINE.crease);
+      }
     }
     _drawGlow(ctx, g) {
       const rx = g.w * 0.25, ry = g.h * 0.165, cy = g.lidY - ry * 0.3;
@@ -1893,7 +1956,6 @@ button{touch-action:manipulation}
   global.Kamisama = Kamisama;
   if (typeof module !== 'undefined' && module.exports) module.exports = Kamisama;
 })(typeof window !== 'undefined' ? window : globalThis);
-
 </script>
 <script>
 (()=>{
@@ -16413,13 +16475,13 @@ function mmSpan(min){ min=Math.max(0,Math.round(min)); const h=Math.floor(min/60
  '#mmBtn{position:absolute;left:3%;bottom:3%;z-index:6;display:flex;align-items:center;gap:4px;padding:4px 10px 4px 7px;border-radius:999px;border:2px solid #2d3329;background:rgba(255,253,246,.92);color:#2d3329;font-size:12px;font-weight:700;line-height:1.2;cursor:pointer}'+
  '#mmBtn svg{width:16px;height:16px;flex:none}#mmBtn.off{display:none}'+
  '#pMimamori .mmBox{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:2px solid #2d3329;border-radius:16px;background:#fffdf6}'+
- '#pMimamori .mmAct{font-weight:700;font-size:15px}#pMimamori .mmTime{font-size:22px;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums}#pMimamori .mmRow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}#pMimamori .mmNow{font-size:12px;opacity:.7;white-space:nowrap;font-variant-numeric:tabular-nums}#pMimamori .mmSub{font-size:12px;opacity:.75}#pMimamori .mmLeft{font-size:13px;font-weight:700;color:#5c7a4a;margin-top:-4px}#pMimamori .mmLeft:empty{display:none}'+
+ '#pMimamori .mmAct{color:#2f5230;font-weight:700;font-size:15px}#pMimamori .mmTime{color:#2f5230;font-size:22px;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums}#pMimamori .mmRow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}#pMimamori .mmNow{color:#2f5230;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}#pMimamori .mmSub{font-size:12px;opacity:.75}#pMimamori .mmLeft{font-size:13px;font-weight:700;color:#5c7a4a;margin-top:-4px}#pMimamori .mmLeft:empty{display:none}'+
  '#pMimamori .mmBtns{display:flex;gap:8px}#pMimamori .mmBtns button{flex:1;padding:10px 6px;border-radius:12px;border:2px solid #2d3329;background:#fff;font-weight:700;font-size:14px;color:#2d3329}#pMimamori #mmEnd{background:#e9f3df}'+
  'body.mm .leaf{display:none}body.mm .stage *{animation-play-state:paused}body.mm #charWrap{visibility:hidden}body.mm #stage{pointer-events:none}body.mm #bubble{display:none}'+
  '#mmNote{display:none;position:absolute;left:8%;right:8%;bottom:9%;z-index:8;text-align:center;color:#fffdf6;font-size:13px;line-height:1.6;text-shadow:0 1px 3px rgba(0,0,0,.6)}body.mm #mmNote{display:block}'+
  '#mmDial{display:none;position:absolute;left:50%;top:9%;width:44%;max-width:240px;transform:translateX(-50%);z-index:8;pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}body.mm #mmDial{display:block}#mmDial svg{display:block;width:100%;height:auto}'+
  '#mmMinRow{grid-column:1/-1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px;border:2px dashed #b9c4ad;border-radius:14px;margin-top:2px}#mmMinRow b{font-size:14px;flex:1 0 100%}#mmMin{width:5.5em;font-size:16px;padding:6px 8px;border-radius:10px;border:2px solid #2d3329;background:#fff;color:#2d3329;text-align:right}#mmMinRow span{font-size:14px}#mmMin.shake{animation:mmshake .45s ease-out 1}@keyframes mmshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}#mmGo{margin-left:auto;white-space:nowrap;padding:7px 14px;border-radius:10px;border:2px solid #2d3329;background:#e9f3df;font-weight:700;font-size:14px;color:#2d3329}'+
- '#pMimamori .mmSay{font-size:13px;line-height:1.5;padding:6px 10px;border-radius:10px;background:#f1f6ea}#pMimamori .mmSay:empty{display:none}'+
+ '#pMimamori .mmSay{color:#2f5230;font-size:13px;line-height:1.5;padding:6px 10px;border-radius:10px;background:#f1f6ea}#pMimamori .mmSay:empty{display:none}'+
  'body.mm-dim #stageBox{position:relative}body.mm-dim #stageBox::after{content:"";position:absolute;inset:0;background:rgba(10,12,20,.55);pointer-events:none;border-radius:18px;z-index:7}';
  document.head.appendChild(st);
  const b=document.createElement('button'); b.id='mmBtn'; b.type='button'; b.setAttribute('aria-label','見守ってもらう');
