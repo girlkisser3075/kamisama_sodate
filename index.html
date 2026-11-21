@@ -278,6 +278,7 @@ html,body{overflow:hidden;overscroll-behavior:none}
 #pActions .acts{flex:1;min-height:0;grid-template-rows:1fr 1fr}
 .act{min-height:0;justify-content:center;padding:6px 4px;gap:3px;line-height:1.2}
 .act svg{width:26px;height:26px;flex:none}
+.act span{word-break:keep-all;overflow-wrap:anywhere} /* 2026-11-17：名は言葉の切れ目（<wbr>）でだけ折る（「甘味をあげ／る」と一字だけ落ちていた） */
 .hint{flex:none;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* 会話の文字枠：長い文は枠の中で自動的に送る */
@@ -522,11 +523,11 @@ button{touch-action:manipulation}
   <section class="panel" id="panel">
     <div class="pane on" id="pActions">
       <div class="acts">
-        <button class="act" data-act="sweets"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 28 L25 5" stroke="#9c7a52" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="22" r="5.2" fill="#f5e6c6" stroke="#6b5234" stroke-width="1.5"/><circle cx="16.5" cy="16" r="5.2" fill="#f5e6c6" stroke="#6b5234" stroke-width="1.5"/><circle cx="21" cy="10" r="5.2" fill="#f5e6c6" stroke="#6b5234" stroke-width="1.5"/><path d="M8 19 q4 -3 8 0 M12.5 13 q4 -3 8 0 M17 7 q4 -3 8 0" stroke="#b9772f" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span>甘味をあげる</span></button>
+        <button class="act" data-act="sweets"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 28 L25 5" stroke="#9c7a52" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="22" r="5.2" fill="#f5e6c6" stroke="#6b5234" stroke-width="1.5"/><circle cx="16.5" cy="16" r="5.2" fill="#f5e6c6" stroke="#6b5234" stroke-width="1.5"/><circle cx="21" cy="10" r="5.2" fill="#f5e6c6" stroke="#6b5234" stroke-width="1.5"/><path d="M8 19 q4 -3 8 0 M12.5 13 q4 -3 8 0 M17 7 q4 -3 8 0" stroke="#b9772f" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span>甘味を<wbr>あげる</span></button>
         <button class="act" data-act="talk"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 8 q0 -3 3 -3 h16 q3 0 3 3 v10 q0 3 -3 3 h-9 l-6 5 v-5 h-1 q-3 0 -3 -3z" fill="#fffdf6" stroke="#2d3329" stroke-width="1.8" stroke-linejoin="round"/><circle cx="11" cy="13" r="1.6" fill="#2d3329"/><circle cx="16" cy="13" r="1.6" fill="#2d3329"/><circle cx="21" cy="13" r="1.6" fill="#2d3329"/></svg><span>おはなし</span></button>
         <button class="act" data-act="pat"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 17 v-8 q0 -2 2 -2 t2 2 v6 v-9 q0 -2 2 -2 t2 2 v9 v-8 q0 -2 2 -2 t2 2 v9 v-5 q0 -2 2 -2 t2 2 v9 q0 7 -8 7 h-2 q-5 0 -8 -5 l-3 -5 q-1 -2 1 -3 t3 1z" fill="#fbe3cf" stroke="#2d3329" stroke-width="1.7" stroke-linejoin="round"/><path d="M4 6 l2 2 M3 11 h3 M8 3 l1 3" stroke="#ef6f8a" stroke-width="1.8" stroke-linecap="round"/></svg><span>なでる</span></button>
-        <button class="act" data-act="clean"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M22 3 L14 17" stroke="#9c7a52" stroke-width="2.4" stroke-linecap="round"/><path d="M12 15 l6 4 l-6 10 q-6 -1 -9 -6z" fill="#e0c56d" stroke="#6b5234" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 21 l-2 4 M11 22 l-3 5" stroke="#6b5234" stroke-width="1.2"/><ellipse cx="25" cy="26" rx="3" ry="1.8" fill="#8cc56f" transform="rotate(-25 25 26)"/></svg><span>境内のそうじ</span></button>
-        <button class="act" data-act="trans"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 27 C6 22 6 10 16 5 C26 10 26 22 16 27Z" fill="#8cc56f" stroke="#2d5a34" stroke-width="1.7"/><path d="M16 27 V8" stroke="#2d5a34" stroke-width="1.4"/><path d="M26 4 l1 2.5 l2.5 1 l-2.5 1 l-1 2.5 l-1 -2.5 l-2.5 -1 l2.5 -1z M6 20 l.8 2 l2 .8 l-2 .8 l-.8 2 l-.8 -2 l-2 -.8 l2 -.8z" fill="#f5c93a"/></svg><span>変身をねだる</span></button>
+        <button class="act" data-act="clean"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M22 3 L14 17" stroke="#9c7a52" stroke-width="2.4" stroke-linecap="round"/><path d="M12 15 l6 4 l-6 10 q-6 -1 -9 -6z" fill="#e0c56d" stroke="#6b5234" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 21 l-2 4 M11 22 l-3 5" stroke="#6b5234" stroke-width="1.2"/><ellipse cx="25" cy="26" rx="3" ry="1.8" fill="#8cc56f" transform="rotate(-25 25 26)"/></svg><span>境内の<wbr>そうじ</span></button>
+        <button class="act" data-act="trans"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 27 C6 22 6 10 16 5 C26 10 26 22 16 27Z" fill="#8cc56f" stroke="#2d5a34" stroke-width="1.7"/><path d="M16 27 V8" stroke="#2d5a34" stroke-width="1.4"/><path d="M26 4 l1 2.5 l2.5 1 l-2.5 1 l-1 2.5 l-1 -2.5 l-2.5 -1 l2.5 -1z M6 20 l.8 2 l2 .8 l-2 .8 l-.8 2 l-.8 -2 l-2 -.8 l2 -.8z" fill="#f5c93a"/></svg><span>変身を<wbr>ねだる</span></button>
         <button class="act" data-act="restore"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 7 Q16 10 30 7 L30 10 Q16 13 2 10Z" fill="#2b2320"/><rect x="4" y="11" width="24" height="3" fill="#d4472c"/><rect x="7.5" y="11" width="3.4" height="18" fill="#d4472c"/><rect x="21.1" y="11" width="3.4" height="18" fill="#d4472c"/><rect x="5" y="16.5" width="22" height="2.4" fill="#d4472c"/></svg><span>神社を直す</span></button>
         <button class="act" data-act="sleep"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20 5 A11 11 0 1 0 27 21 A9 9 0 0 1 20 5Z" fill="#f3de8a" stroke="#6b5a2a" stroke-width="1.6"/><path d="M24 7 h4 l-4 4 h4" stroke="#6f7a64" stroke-width="1.5" fill="none" stroke-linejoin="round"/></svg><span>おやすみ</span></button>
         <button class="act" data-act="settings"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="4" width="18" height="24" rx="2" fill="#fffdf6" stroke="#2d3329" stroke-width="1.7"/><path d="M11 10 h10 M11 15 h10 M11 20 h6" stroke="#6f7a64" stroke-width="1.8" stroke-linecap="round"/></svg><span>きろく</span></button>
@@ -551,7 +552,7 @@ button{touch-action:manipulation}
         <div id="cnext">▼</div>
       </div>
       <div class="crow">
-        <input id="cin" maxlength="140" autocomplete="off" enterkeyhint="send" placeholder="カミサマに話しかける（*行動* も可）" aria-label="カミサマに話しかける">
+        <input id="cin" maxlength="140" autocomplete="off" enterkeyhint="send" placeholder="話しかける（*行動* も可）" aria-label="カミサマに話しかける">
         <button id="csend">話す</button>
       </div>
       <div class="crow2">
@@ -2139,8 +2140,9 @@ button{touch-action:manipulation}
                  10-15 EXP_VERB・K10_LINES・GUESS_LINES／10-16 sisterMode・boredShort・けんむん SPIRITS・奄美 PREFS・AMAMI_WORDS・言葉の束 10 K10B（T9_WHOLE）／
                  10-17 言葉の束 10 の残り likePlace・言葉の束 11 B2_RULE・thHesit・LIKE_PRE・TH_NOREC・kamiAnsPf・FREE_NO／10-17 言葉の束 12 B3_FIX_RE・B3_LINES・B3_LINES2／
                  10-21 KOTOBA（kotobaGoto）・DEF_KNOWN（defineWord）・言葉の束 13（KARADA karada・KAMI_OBS kamiObs・KURASHI_D・KIMOCHI kimochi・WAKAMONO_ROUTE・WAKAMONO_MOD）／
-                 10-24 Muse さんの気づき topicStop・weatherNeg・herLikeExcept・aboutUserName・roofTalk（roofLine。語彙辞書の 屋根 も）・futabaAge
-     言い回しの差分：6b ALT_LINES／6i TF_ALT／10-09 TF_REVERT_N／10-15 ATSUMI_ALT・K10_ALT
+                 10-24 Muse さんの気づき topicStop・weatherNeg・herLikeExcept・aboutUserName・roofTalk（roofLine。語彙辞書の 屋根 も）・futabaAge／
+                 11-17 点検の直し TK_RULES（tk〜。T9_WHOLE）・compare の run（自分と比べる）・相づちの口まね（planRespond）／11-17 年中行事 第5弾 GY5_TALK（gyojiTalk5。T9_WHOLE）／11-18 繰り返しの偏り TTL_NOTE_LEAD の言い換え・TF_Q_ALT（変身のあとの問いの q を get で選ぶ）／11-18 拗ねている時の挨拶 BOOT_SULK（bubble）・VISIT_SULK（dayScene の visit）
+     言い回しの差分：6b ALT_LINES／6i TF_ALT／10-09 TF_REVERT_N／10-15 ATSUMI_ALT・K10_ALT／11-18 TTL_NOTE_LEAD の言い換え・TF_Q_ALT（変身のあとの問い）
      呼び名の札：第8弾／【まとめ】呼び名まわり／6d 知らせ方／6f 札と組み合わせ／点検の直し 第5回 飾りの決まり／10-10 COMBO2／10-18 WISH_NOTE_DONE（ttlNewsDSL）
      おはなしの流れ・飾り：【まとめ】おはなしの流れ／点検の直し 第2回 TURN・第5回 TURN.deco／第14・15回 締めの一言／第53回 流れの整理／10-15 CX_NOTE.wordNeg／
                  10-16〜18 文末の気持ち 第1〜5弾（gobiOf・GOBI_HEAD・GOBI_REPLY・GOBI_TOPIC・GOBI_TOPIC2・GOBI_TOPIC3・wishPhrase）／10-17 言葉の束 12 b3Other・b3Season・b3Num・b3Night
@@ -2155,7 +2157,7 @@ button{touch-action:manipulation}
      話し出し（OPEN_TOPICS・IDLE_TALK）：「拡張：触れる位置 / 景色 / 話し出し」・第14弾 おはなしの流れ／第53回 OPEN_QUIET／第23回 plan_follow／10-09 留守の話の後日談／
                  10-19 ASOBI_INV・質問でない形 KB_BOAST・KB_CONSULT・KB_CHOICE・KB_SEASON・kbPrev・KB_CONSULT_RS
      暦・その日の場面：6t calNow・6u 小さな出来事・6v 年中行事・6w 確認用の URL／点検の直し 第2回 dayScene・第7回 暦の切り替え・第8回 毎日の場面／第22回 時計の暦／
-                 第26回・第45回 時計の暦への切り替え／第24回・第44回 七十二候／10-10 年中行事 第2弾（誕生日 ubday）・第3弾・食い違う台詞／10-15 年中行事 第4弾
+                 第26回・第45回 時計の暦への切り替え／第24回・第44回 七十二候／10-10 年中行事 第2弾（誕生日 ubday）・第3弾・食い違う台詞／10-15 年中行事 第4弾／11-17 第5弾（冬：新嘗祭・煤払い・鏡開き・小正月）
      暮らし：第21回 釣り合い／第23回 ごきげん・昨日の続き／第25回 続き物（10-10 第2弾・10-16 南の島）／第28・31回 季節の甘味／第30回 上機嫌／
                  10-09 AWAY_TALE（第2〜4弾）／10-10 誕生日・WEEK_LINES・留守の話 12 話／10-16 暮らしの続き southBird・nagareboshi・kenmunFumi／10-17 留守の話 第5弾 mine〜／
                  10-18 mineIki・続き物 negai（serialNext を包む）／10-20 petMamori・ikiSugoroku・PERSONAL_SERIAL・sugo_check／10-21 likeMatsuri・skillDeshi・jobIchinichi
@@ -2203,6 +2205,7 @@ button{touch-action:manipulation}
      （データ・2026-10-08）KAMISAMA_PARTS の face_base.png・blush.png を差し替え（輪郭を少し細く・セル影・水彩風の頬。作り方と採用した絵は tests/eye/sample/）。
        モデルの order：耳 ear_l・ear_r を face_base の前（顔の後ろ）へ・blush・blush_boost を白目の前へ。耳の位置 ear_l.pos -106・ear_r.pos 115
    ■ 本体に直接手を入れた箇所（外側から包めないため。場所ごと）
+     （2026-11-17）画面の文字の切れ：行動のぼたんの名に <wbr>（甘味を・境内の・変身を の後ろ）と .act span の word-break:keep-all／拗ねている時の案内文と遊びの案内文 ASOBI_HINT を 27 字までに／入力欄の薄い文字を「話しかける（*行動* も可）」に（検査 tests/check_moji.js）
      （2026-10-24）<head> の <title> の直後に、タブのアイコン（rel="icon"・SVG）と iPhone のホーム画面のアイコン（apple-touch-icon・180 の PNG）と、ホーム画面の名前を足した（絵は 素材/アイコン/ に。丸い双葉＋金のきらめき）。同じ日に、読み込み中の画面（#boot）の双葉も同じ絵に替えた（縁の線なし・きらめきはユーザーの判断で付けない）
      （2026-10-17）留守の間の話 第5弾の AW_MINE（const の関数）に、仕事・得意なこと・苦手なもの を集める行を足した（第5弾の続き）
      （2026-10-18）同じ AW_MINE に、行ってみたい場所（印 iki のある願い）を集める行を足し、願いの行から行ってみたい場所を除いた（mineIki）
@@ -14416,7 +14419,7 @@ LAYER('afterReply','おはなしの返事のあと、仲直りの場面（深刻
 (()=>{ const base=renderHUD; renderHUD=function(...a){ const r=base.apply(this,a);
   try{ const sulk=moodSulky(); const bar=$('#hMood'); const lb=bar&&bar.parentElement&&bar.parentElement.previousElementSibling;
     if(lb){ lb.textContent=sulk?'ごきげん…':'ごきげん'; const st=S.mood>=70?'上機嫌':sulk?'拗ねている':'ふつう'; lb.parentElement.title='ごきげん：'+st; lb.parentElement.setAttribute('aria-label','ごきげん '+st); }
-    if(sulk&&S.ap>0&&S.hunger>=25) $('#hint').textContent='カミサマが拗ねているみたい。なでたり、甘味をあげたりしてみよう'; }catch(_){}
+    if(sulk&&S.ap>0&&S.hunger>=25) $('#hint').textContent='拗ねているみたい。なでたり甘味をあげたりしてみよう'; /* 2026-11-17：案内文は 27 字まで（1 行で、はみ出すと … で切れる。check_moji） */ }catch(_){}
   return r; }; })();
 LAYER('renderHUD','拗ねている時は「ごきげん…」と、ひと言（第23回）');
 setInterval(()=>{ try{ moodMakeupCheck(); }catch(_){} },2500);
@@ -23815,7 +23818,7 @@ const ASOBI_PICK={lead:['happy.hop:遊ぶか！ よいぞ、よいぞ！','smug.
  omakase:['smug:ならば、わしが決めてやろう。……{nm}じゃ！','smug.cheer:よかろう、わしが選んでやる。今日は{nm}の気分じゃ！'],
  direct:['happy.hop:また遊ぶか！ よいぞ。今度は{nm}じゃ！','smug.cheer:よし、今度はわしが決めてやろう。……{nm}じゃ！','happy:まだ遊び足りぬか！ ならば{nm}じゃ。ほかのがよければ、名を申せばよいぞ。'],
  no:'pout:なんじゃ、遊ばぬのか。¶smug:……まあよい。遊びたくなったら、いつでも申せ。わしはいつでも暇……いや、受けて立つ用意があるからの！'};
-const ASOBI_HINT='「おはなし」の「話題メニュー」から、遊びやおみくじに誘えます';
+const ASOBI_HINT='「おはなし」の話題メニューで、遊びやおみくじに誘えます';
 const ASOBI_LINES_ALL=()=>[...Object.values(ASOBI_INV).flatMap(v=>[...v.lead,...v.q,v.yes,v.no]),...ASOBI_PICK.lead,...ASOBI_PICK.q,...[...ASOBI_PICK.omakase,...ASOBI_PICK.direct].map(x=>X(x,{nm:'じゃんけん'})),ASOBI_PICK.no];
 const ASOBI_KAMI_PICK=['janken','shiri','riddle']; /* カミサマが選ぶ時（おまかせ・同じ日の 2 回目からの「遊ぼう」）。問いを重ねない遊びから */
 const ASOBI_GO_RE=/やろ|やる(?!な)|やります|しよ|する[!！]?$|勝負|受けて立|うけてた|望むところ|のぞむところ|いいよ|いいね|もちろん|おっけ|^おけ|^ok|頼む|たのむ|お願い|おねがい|引いて|ひいて|引く|ひく|乗った|のった|^よし|ぜひ|是非|かかってこい/;
@@ -26680,6 +26683,233 @@ rule('futabaAge',50.5,/(?:双葉|ふたば)(?:は|って|の)?(?:歳|とし|年�
   try{ if(r&&typeof r.b==='string') r.b=r.b.replace(/¶n:「ここじゃ！」¶n:([^¶]*?顔を出した。)¶laugh\.hop:/,'¶n:$1¶laugh.hop:ここじゃ！ '); }catch(_){}
   return r; }; })();
 LAYER('hideReveal','2026-10-24：かくれんぼで出てくる時、顔を出してからカミサマの台詞で「ここじゃ！」（地の文にしない）');
+
+/* =====================================================================
+   2026-11-17：点検で見つけた噛み合わない返事の直し（言葉の束 14＝tests/cases/B5 を流して読んだもの。検査 tests/check_tenken.js。台詞は Claude 作・一覧の 136）
+   ① 取り違え
+     ・「お世話になってます」「元気になってよかった」「友達になって」「友達になってくれてありがとう」→ 変身（「〜になって」）→ tkOsewa・tkNatteYokatta・tkTomo・tkTomoThanks
+     ・「私と狛犬どっちが大事？」→「私じゃ！」→ 自分とほかの物を比べる時は「そなたじゃ！」（compare の run を包む。甘味と比べた時だけ長く唸る）
+     ・「友達と喧嘩したんだけどどっちが悪いと思う？」→「喧嘩したんだけどじゃな！」→ 味方をする tkWhoWrong
+     ・「私のほうが背が高い」「背低いね」→「のほう！ 新しい言葉じゃ！」→ tkSei（本体の背丈で強がる）・ほかの「私のほうが〜」は tkWatashiHou
+   ② 誰のことか
+     ・「家族はいるの？」→「そなたの家族か」→ カミサマの家族 tkKamiFamily（「親はいるの？」「兄弟はいるの？」は前からの受けのまま）
+     ・「楠の婆様は何歳？」→ カミサマの歳・「狛犬は何歳？」→ 歳に触れない → 脇役の歳 tkWakiAge（鴉の長老は前からの herElderAge）
+     ・「着物は誰が縫ったの？」→ 人の子の暮らしの品 → 前からの clothesWhere の返事を使う tkKimonoWho
+     ・「団子以外で好きな甘味は？」→「甘味以外で、か」→ ほかの甘味を数える tkSweetExcept（「甘いもの以外」は前からの herLikeExcept）
+   ③ 意見を聞く：「カミサマならどうする？」（誘いと取っていた）tkKamiNara・「〜したほうがいいかな／と思う？」tkShould（体の具合・恋・辞める・休む 等は前からの受けのまま）・
+      「正直に言って」「本音を聞かせて」tkHonne・「助言ちょうだい」「いい案ある？」tkAdvice
+   ④ 遊び方を聞く：tkHowPlay・札 tkFudaQ・見守り tkMimamoriQ・記録が残るか tkSave・音 tkOto（きろくの「音」へ）・終わりはあるか tkOwari（カミサマは消えない）
+   ⑤ つなぎ・短い言葉：「ところでさ」「それはそうと」「話を戻すけど」tkTsunagi（topicChange の返事）・「なんでもない」tkNandemo・「どっちでもいい」tkDocchi・
+      「うそうそ」「なんてね」tkJoke（joking の返事）・「言いすぎた」tkIisugi（apology の返事）・「昨日より元気そうだね」tkMaeYori
+      相づちの口まね：「へー」に「ふーん、とな」「ほう、と申したな？」と返していた → 言った言葉で返す（planRespond を包む）
+   ⑥ 冬の言葉：初雪 tkHatsuyuki・息が白い tkIki・忘年会 tkBounenkai・落ち葉（秋と冬だけ）tkOchiba
+   どれも文全体で受ける（T9_WHOLE）。深刻な言葉・軽い落ち込み・疲れの入った文は拾わない。問いの途中は今までどおり（問いの答えが先）
+   ===================================================================== */
+const TK_GENERAL_SWEET=/甘いもの|あまいもの|甘味|かんみ|お菓子|おかし|おやつ|すいーつ/;
+const TK_SHOULD_NG=/帰|かえ|病院|びょういん|医者|いしゃ|薬|くすり|熱|告白|こくはく|好き|すき|付き合|つきあ|別れ|わかれ|辞め|やめ|休ん|やすん|寝|死|消え|諦|あきら/;
+const TK_AGE={
+  koma:'pout:狛犬の歳か？ 聞いても答えぬのじゃ、あやつらは。¶smug:千年は並んで立っておるはずじゃが……歳も名乗らぬとは、無礼な奴らじゃ！',
+  baba:'normal:楠の婆様か？ わしより、ずっと年上じゃ。¶smug:本人は「数えるのは八百でやめた」と言うておる。……八百より先も、だいぶ長いはずじゃがな。¶normal:わしがまだ若木じゃった頃から、もう婆様じゃったからのう。',
+  tanuki:'normal:狸の一家か？ 親父どのは七つか八つ、子らはまだ一つか二つじゃ。¶smug:……わしから見れば、みな昨日生まれたようなものじゃがな！',
+  other:'confused:{x}の歳か。……数えたことがないのう。¶smug:わしから見れば、山の者はみな、昨日生まれたようなものじゃ。千年生きておると、そうなるのじゃ！'};
+const TK_ME_OR=['smug:そなたじゃ！ 比べるまでもない。¶confused:……理由？ ¶smug:{x}は、わしに甘味を運んでこぬからの！ ¶pout:……い、いや、それだけではないぞ。それだけでは。',
+  'happy:そなたじゃ！ 決まっておる。¶smug:{x}には内緒じゃぞ。……神がえこひいきをしたと知れたら、山じゅうの噂になるからの。'];
+const TK_ME_SWEET='confused:む、むむ……！ ¶n:少女は長いこと唸った。頭の双葉が、右へ左へ揺れている。¶smug:……そなたじゃ！ そなたがおらねば、甘味は届かぬからの！';
+const TK_SHOULD=['serious:ふむ、迷うておるのじゃな。¶n:少女は腕を組んで、もっともらしく目を閉じた。¶smug:……そなたの胸の内では、もう半分決まっておるじゃろ？ 神に聞きに来る時は、たいていそうじゃ。¶normal:どちらを選んでも、わしはそなたの味方じゃ。決めたら、また聞かせるがよい。',
+  'smug:神の答えを授けよう。……迷うたら、甘味を食べてから決めよ！ ¶normal:口が満ちると、不思議と心も決まるものじゃ。¶bliss:どちらに決めても、また話しに来るのじゃぞ。'];
+const tkOther=(id)=>(ctx)=>{ const r=RULES.find(z=>z.id===id); return r?r.run(ctx,[]):null; };
+const TK_RULES=[
+ ['tkOsewa',/(お世話|おせわ)(様|さま)?に(なって|なり)|^(お世話|おせわ)(様|さま)(です|でした)?[!！。…\s]*$/,
+   'smug:うむ！ 世話をしてやっておるぞ！ ¶confused:……いや待て。甘味を運んでもろうておるのは、わしの方か。¶smug:……持ちつ持たれつじゃな！ 神と人の子は、昔からそういうものじゃ。'],
+ ['tkNatteYokatta',/(元気|げんき|楽|らく|良く|よく|大丈夫|だいじょうぶ|平気|へいき)になって(よかった|良かった|きた|きてる|きました|安心|ほっと)/,
+   'happy:うむ、よかったのう！ ¶smug:……わしの神通力が、じわじわ効いたのじゃな。礼は甘味でよいぞ！'],
+ ['tkTomo',/^(私|わたし|僕|ぼく|俺|おれ)?(と|の)?(お?友達|お?ともだち|友|仲間|なかま)になって(よ|ください|くれる|くれない|ほしい|欲しい|くれ)?[?？!！。…〜ー\s]*$/,
+   'surprised:と、友になれ、とな！？ ¶smug:……何を今さら。そなたはとうに、わしの友じゃ。¶smug:神の友は、千年にひとりの大役じゃぞ。励むがよい！'],
+ ['tkTomoThanks',/(友達|ともだち|友|仲間|なかま)になって(くれて|よかった|良かった|嬉し|うれし)/,
+   'bliss:……うむ。礼を言うのは、わしの方かもしれぬな。¶smug:……い、今のは聞かなかったことにせよ！ 神の友は大役じゃぞ。これからも励むがよい！'],
+ ['tkWhoWrong',/(喧嘩|けんか|言い合い|いいあい|揉め|もめ).{0,14}(どっち|どちら|誰|だれ)が(悪い|わるい)/,
+   'smug:そなたの味方じゃ！ 話を聞く前から決まっておる。¶normal:……じゃが、喧嘩は長引くと、双方くたびれるものじゃ。¶smug:先に声をかけた方が、器の大きい方じゃぞ。わしが見ておいてやる。',{low:1}],
+ ['tkSei',/(私|わたし|僕|ぼく|俺|おれ|こっち)の(ほう|方)が.{0,4}(背|せ)(が|は)?(高い|たかい|大きい|おおきい|でかい)|^(かみさま|神様)?(って|は)?(背|せ)(が|は)?(低い|ひくい|小さい|ちいさい)(ね|よね|な|んだね)?[!！。…〜ー\s]*$/,
+   'pout:ぬ……せ、背丈で神を測るでない！ ¶smug:わしの本体を見よ。この山で一番背が高いのじゃぞ！ ¶smug:この姿は、そなたと話しやすいよう合わせてやっておるだけじゃ。ありがたく思うがよい！'],
+ ['tkWatashiHou',/^(私|わたし|僕|ぼく|俺|おれ)の(ほう|方)が.{1,8}$/,(ctx)=>/かわい|可愛|きれい|綺麗|美し|うつくし/.test(ctx.t)?null:/好き|すき/.test(ctx.t)?'surprised:な、何を張り合うておるのじゃ。¶smug:……好きの大きさ比べなら、わしは負けぬぞ。千年分あるからの！':
+   'smug:ほう、そなたの方が、とな？ ¶smug:……よかろう、そこは譲ってやる。神は心が広いからの。¶laugh:じゃが可愛さでは、わしの勝ちじゃ！ のーっじゃっじゃっじゃ！'],
+ ['tkKamiFamily',/^(かみさま|神様)?(に|には|は|って)?(家族|かぞく)(は|って)?(いる|居る|おる|います)(の|ん|か)?[?？]*$/,(ctx)=>!/(の|ん|か|[?？])$/.test(ctx.t)?null: /* 「家族はいない」（人の子の話）は拾わない */
+   'confused:わしの家族か？ ¶normal:わしには親も子もおらぬが、強いて言えば、この大木から落ちた種が、山のあちこちで育っておる。¶smug:つまり、子孫が千本くらいおるのじゃ。むふー！'],
+ ['tkWakiAge',/(狛犬|こまいぬ|婆様|ばばさま|楠|くすのき|狸|たぬき|狐|きつね|雀|すずめ|梟|ふくろう|山桜|やまざくら)(の一家|ども|たち|達)?(は|って|の)?(歳|とし|年齢)?(は|って)?[、\s]*(何歳|なんさい|いくつ|おいくつ)(?!まで|生|うま|産)/,(ctx,m)=>{ const x=m[1];
+   if(/狛犬|こまいぬ/.test(x)) return TK_AGE.koma; if(/婆様|ばばさま|楠|くすのき/.test(x)) return TK_AGE.baba; if(/狸|たぬき/.test(x)) return TK_AGE.tanuki;
+   return {v:{x},b:TK_AGE.other}; }],
+ ['tkKimonoWho',/(着物|きもの|服|ふく|衣|ころも).{0,6}(誰が|だれが).{0,6}(縫|ぬっ|ぬい|作|つく|仕立|したて|くれた|織|おっ)/,tkOther('clothesWhere')],
+ ['tkSweetExcept',RX`(${SYN.sweets})(?:以外|いがい)(?:で|に|は|の|だと|なら)?.{0,10}?(?:${SYN.like}|好物|こうぶつ)`,(ctx,m)=>{ const w=m[1]; if(TK_GENERAL_SWEET.test(w)) return null;
+   const L=['饅頭','大福','羊羹','金平糖','みたらし団子','おはぎ'].filter(z=>!z.includes(w)&&!w.includes(z)).slice(0,4).join('、');
+   return {v:{w,l:L},b:'smug:{w}以外でか？ {l}……。¶n:少女は指を折って数え始めた。両手では足りないらしい。¶hungry:……数えておったら、口が寂しゅうなってきたではないか。'}; }],
+ ['tkKamiNara',/^(かみさま|神様|あなた|きみ|君)(なら|だったら)(どう|何|なに)(する|します|思う|おもう|答える)?(の|かな)?[?？。…\s]*$/,
+   'smug:わしならか？ 決まっておる。まず甘味を食べる！ ¶normal:……口が満ちれば、たいていの悩みは半分になるのじゃ。¶smug:残りの半分は、ここでわしに話せばよい。それで片が付く！'],
+ ['tkShould',/(た|だ)(ほう|方)が(いい|良い|よい)(かな|かなあ|かなぁ|のかな|よね|と思う|とおもう|かしら|[?？])/,(ctx)=>TK_SHOULD_NG.test(ctx.t)?null:pick('tkShould',TK_SHOULD)],
+ ['tkHonne',/^(正直|しょうじき)に(言って|いって|話して|はなして|答えて|こたえて|教えて|おしえて)(よ|ね|ほしい|みて)?[!！。…\s]*$|^(本音|ほんね|本心|ほんしん)(を|は|で)?(聞かせて|きかせて|教えて|おしえて|言って|いって|話して)?(よ|ね|ほしい)?[?？!！。…\s]*$/,
+   'smug:正直に、とな？ わしはいつでも正直じゃぞ！ ¶normal:……では、申す。¶bliss:そなたが来ると、境内が明るうなる。これは本当じゃ。¶smug:あと、甘味はいくつあってもよい。これも本当じゃ！'],
+ ['tkAdvice',/(あどばいす|助言|じょげん|知恵)(を|が|は)?(ちょうだい|頂戴|ください|くれ|ほしい|欲しい|貸して|かして|して)|(いい|良い|よい)(案|考え|かんがえ|方法|ほうほう)(は|が|とか)?(ある|ない|あります)(かな)?[?？]/,
+   'smug:助言か！ よかろう、神の知恵を授けてやる。¶normal:一つ、よう寝ること。二つ、甘いものを食べること。三つ、困ったらここへ来ること。¶smug:……この三つで、わしは千年やってこられたのじゃ。間違いない！'],
+ ['tkHowPlay',/^(これ|ここ|このげーむ)?(って|は|で|では)?(どうやって|どう)(遊ぶ|あそぶ|遊べば|あそべば|遊んだら)(の|いい|よい)*[?？]*$|(遊び方|あそびかた)(を|が|は|って)?(教えて|おしえて|わから|分から|知りたい|しりたい|何|なに|[?？]|$)|^(ここで|ここでは)?(何|なに)(を)?(したら|すれば)(いい|よい)(の|かな|んだろう)?[?？]*$/,
+   'smug:簡単じゃ！ 甘味を供えて、わしと話して、撫でて、境内を掃く。それだけじゃ！ ¶normal:信仰がたまったら、社を直せる。直すほどに、境内も賑やかになるぞ。¶smug:……迷うたら、まずわしを褒めるところから始めるとよい！'],
+ ['tkFudaQ',/^(呼び名の)?(札|ふだ)(って|とは|は)[、\s]*(何|なに|なん|どういう)(?!まい|枚)/,
+   'smug:札か！ そなたの振る舞いを見て、わしが付けてやる呼び名の札じゃ。¶normal:甘味をよう運ぶ者、掃除に励む者、話の面白い者……。集めた札は、わしがちゃんと数えておる。¶smug:どんな名が付くかは、そなた次第じゃ！'],
+ ['tkMimamoriQ',/(見守り|みまもり)(もーど)?(って|とは|は)?[、\s]*(何|なに|なん|どう)/,
+   'smug:見守りか！ そなたが学びや仕事に励む間、わしがそばで見ておってやるのじゃ。¶normal:「見守り」を押して、どれだけ励むか決めるがよい。その間、わしは静かにしておる。¶smug:……終わったら、ちゃんと褒めてやるぞ！'],
+ ['tkSave',/せーぶ|(でーた|記録)(は|が|って)?(消えない|消える|消えちゃう|きえない|きえる|残って|残る|のこって|のこる|保存)|保存され|ほぞんされ/,
+   'smug:案ずるな。そなたとのことは、わしの年輪にちゃんと刻んでおる。¶normal:次に来た時は、続きからじゃ。……いつもと同じ入り口から来るのじゃぞ。¶smug:別の道から来ると、別の境内に出てしまうからの。'],
+ ['tkOto',/(音|音楽|おんがく|bgm|びーじーえむ|曲)(を|は|が|の)?(消し|けし|消せ|止め|とめ|変え|かえ|小さく|ちいさく|大きく|おおきく|下げ|さげ|切っ|きっ|切り|おふ)/,
+   'confused:音か？ 境内に流れておる調べのことじゃな。¶smug:「きろく」の中の「音」で、変えたり止めたりできるぞ。¶pout:……わしの声まで消すでないぞ？ もったいないからの！'],
+ ['tkOwari',/(終わり|おわり|えんでぃんぐ|結末|けつまつ|最終回)(って|は|とか)?(ある|あります|くる|来る)(の|ん|かな)?[?？]*$/,
+   'smug:終わり？ ないぞ！ ¶smug:わしは千年ここにおった。次の千年もここにおる。¶bliss:そなたが来るかぎり、明日も明後日も続きがあるのじゃ。……じゃから、安心してまた来るがよい。'],
+ ['tkTsunagi',/^(ところで(さ|ね|さあ|だけど)|それはそうと|それはさておき|さておき|話(を|は)?(戻す|もどす|戻る|もどる)(けど|んだけど|が|ね)|(じゃあ|では|じゃ)?次の話|ちなみに(さ|ね)?)[、。…ー〜\s]*$/,tkOther('topicChange')],
+ ['tkNandemo',/^(やっぱり|やっぱ|ううん|いや|あ|ごめん)?[、,\s]*(なんでもない|何でもない)(よ|です|や|わ|から)?[。！!…〜ー\s]*$/,
+   'confused:なんでもない、とな？ ¶pout:……気になるではないか。言いかけてやめるのは、甘味を見せて引っ込めるのと同じじゃぞ。¶normal:……まあよい。言いたくなったら、いつでも申せ。'],
+ ['tkDocchi',/^(どっち|どちら|どれ|なん|何)でも(いい|良い|よい|ええ)(よ|や|かな|です|けど)?[。！!…〜ー\s]*$/,
+   'pout:む、張り合いがないのう。¶smug:……ならば、わしが決めてやろう。神の直感で、こっちじゃ！ ¶n:少女は自信たっぷりに、何もない方を指さした。'],
+ ['tkJoke',/^(うそうそ|嘘嘘|嘘うそ|うそ、うそ|なんてね)[!！。〜ー…w笑\s]*$/,tkOther('joking')],
+ ['tkIisugi',/^(さっきは|ちょっと|今のは)?[、\s]*(言いすぎた|言い過ぎた|いいすぎた)(ね|よ|かも|な)?[。！!…\s]*$/,tkOther('apology')],
+ ['tkMaeYori',/(昨日|きのう|前|まえ|この前|以前|最初|さいしょ)より.{0,6}(元気そう|げんきそう|話しやす|はなしやす|優し|やさし|明る|あかる|楽しそう|たのしそう|嬉しそう|うれしそう)/,
+   'smug:ほう、気づいたか！ わしは日々、磨きがかかっておるのじゃ。¶happy:……そなたがよう来るからじゃな。話し相手がおると、葉の艶まで違うてくるのじゃ。'],
+ ['tkHatsuyuki',/初雪|はつゆき/,
+   'surprised:初雪か！ ¶bliss:その冬の最初の雪はな、音もなく来るのじゃ。梢の先で、一番に気づくのがわしの自慢じゃ。¶smug:そなたも風邪をひかぬよう、襟元を温こうするのじゃぞ。'],
+ ['tkIki',/息(が|も)?(真っ)?(白|しろ)/,
+   'happy:息が白いか！ ¶n:少女も、はーっと息を吐いてみせた。白くはならなかった。¶pout:……木の息は白うならぬのじゃ。べ、別に羨ましゅうはないぞ。¶smug:そなたの白い息は、冬の山の小さな雲じゃな。'],
+ ['tkBounenkai',/忘年会|ぼうねんかい/,(ctx)=>/行きたくな|いきたくな|憂鬱|ゆううつ|嫌|いや|めんど|面倒|だる|つら|辛/.test(ctx.t)?null:
+   'confused:忘年会……年を忘れる会、とな？ ¶smug:人の子は妙なことをするのう。わしは千年分、一年たりとも忘れておらぬぞ！ ¶hungry:……その会、甘味は出るのじゃろうな。出るなら、わしも年を忘れてやってもよい。'],
+ ['tkOchiba',/(落ち葉|おちば|枯れ葉|かれは)(が|は|も|って)?.{0,3}(すご|凄|きれい|綺麗|だらけ|積も|つも)/,(ctx,m)=>/きれい|綺麗/.test(m[3])?(m[2]?null:'bliss:……わしの葉じゃな。風と遊んでおるのじゃ。¶smug:今日の風は、機嫌がよいらしい。'): /* 「落ち葉がきれい」は前からの受けのまま。助詞のない「落ち葉きれい」も同じ台詞で */
+   /秋|冬/.test(calNow().season)?
+   'smug:すごいじゃろ！ この季節は、山じゅうの木が競うて葉を降らせるのじゃ。¶pout:……掃いても掃いても降ってくるがの。¶smug:一番よう降らせておるのがわしの本体なのは、内緒じゃぞ。':null]];
+for(const [id,re,say,o] of TK_RULES) rule(id,47.5,re,(ctx)=>{
+  const t=String(ctx.t||''), all=String((typeof TURN.whole==='string'&&TURN.whole)||ctx.raw||'')+' '+t; if(AN_CRISIS().some(r=>r&&r.test(all))) return null; /* 文の一部（節）で呼ばれても、文全体で見る */
+  if(!(o&&o.low)){ const tr=RULES.find(r=>r.id==='tired'); if(lowOrTired(all)||(tr&&tr.re&&tr.re.test(all))) return null; }
+  const m=t.match(re); if(!m) return null;
+  const r=typeof say==='function'?say(ctx,m):say; if(!r) return null;
+  return typeof r==='string'?{g:{m:1},b:r}:r; });
+{ const ids=TK_RULES.map(x=>x[0]); T9_WHOLE.push(...ids); T9_SPEECH_FIRST.push(...ids); }
+
+/* 比べる：自分（私・僕）とほかの物を比べた時は「そなたじゃ！」（「私じゃ！」と口にしない） */
+for(const r of RULES.filter(r=>r.id==='compare')){ const base=r.run; r.run=function(ctx,m){
+  try{ const SELF=/^(私|わたし|あたし|僕|ぼく|俺|おれ|自分|じぶん)$/;
+    const a=hira(String((m&&m[1])||'').replace(/^(ねえ|かみさま|神様)[、,]?/,'')), b=hira(String((m&&m[2])||''));
+    const sa=SELF.test(a), sb=SELF.test(b);
+    if(sa!==sb){ const x=sa?b:a;
+      if(!/わし|かみさま|神様|君|きみ|あなた|お前/.test(x)){
+        if(/大事|だいじ|大切|たいせつ|好き|すき|いい|良い|かわい|可愛|選|えら|取る|とる/.test(String(ctx.t||''))){ if(RX`${SYN.sweets}`.test(x)) return {b:TK_ME_SWEET}; return {v:{x},b:pick('tkMeOr',TK_ME_OR)}; }
+        const o=base.call(this,ctx,m); if(o&&o.v) for(const k of ['a','b','w']) if(SELF.test(String(o.v[k]||''))) o.v[k]='そなた'; return o; } }
+  }catch(_){}
+  return base.call(this,ctx,m); }; }
+
+/* 相づちの口まねは、言った言葉で（「へー」に「ふーん、とな」「ほう、と申したな？」と返さない） */
+(()=>{ const base=planRespond; planRespond=function(ctx){ const o=base(ctx);
+  try{ if(o&&typeof o.b==='string'&&ctx&&/……ふーん、とな。|ほう、と申したな？ ほう、と申した者は/.test(o.b)){
+    const w=hira(String(ctx.raw||ctx.t||'').trim().replace(/[!！。…w笑\s〜]+$/,''));
+    if(w&&w.length<=7&&!/\s/.test(w)){
+      if(!/^ふ[ーう]ん/.test(w)) o.b=o.b.replace('……ふーん、とな。','……'+w+'、とな。');
+      if(!/^ほ[うーぉ]/.test(w)) o.b=o.b.replace('ほう、と申したな？ ほう、と申した者は',w+'、と申したな？ '+w+'、と申した者は'); } } }catch(_){}
+  return o; }; })();
+LAYER('planRespond','2026-11-17：相づちの口まねは、言った言葉で返す（返事の中の「ふーん」「ほう」を言い換えるだけ）');
+
+/* =====================================================================
+   2026-11-17：年中行事 第5弾（冬の行事。tests/check_gyoji5.js。台詞はすべて Claude 作・台詞の一覧の 137）
+   ・GY に 4 つ足す（どれも日付の決まった日。現実の暦の日だけ。場面は期間に 1 回・その日の一言 line・日記の一文 nk・背景に触れた時 SCN_EV・
+     本人に触れた時 TZ_GY・話題 GY5_TALK）：新嘗祭 11/23・煤払い（正月事始め）12/13・鏡開き 1/11・小正月（どんど焼き）1/15
+   ・社を直す前でも食い違わないよう、社の様子（新しい・古い）には触れない。鏡餅は狸の一家が供えた物
+   ・話題：「勤労感謝の日」は新嘗祭の話に（前はお礼の返事）・「鏡餅割った」は鏡開きに（前は「壊れたのか！？」）・「正月飾りを燃やした」はどんど焼きに（前は初詣の話）。
+     「正月の準備始めた」「鏡」だけ・「感謝してる」・「仕事始め」は触らない
+   ===================================================================== */
+Object.assign(GY,{
+ niiname:{on:(Y,m,d)=>m===11&&d===23,
+  scene:'n:社の縁側に、稲穂がひと束、そっと置いてある。¶smug:来たか。今日は新嘗祭じゃ。その年に穫れた米を神に供えて、実りに礼を言う日じゃぞ。¶normal:昔はこの社にも、村の衆が新米を俵で担いできたものじゃ。……この稲穂は、雀どもが麓の田から運んできたのじゃ。¶hungry:……新米もよいがの。餅にして、あんこを添えてくれると、なおよいのじゃが。',
+  line:'bliss:……そなたも今日は、飯を一粒残さず食べるのじゃぞ。実りへの礼じゃ。',
+  nk:'新嘗祭。雀どもが稲穂をひと束、縁側に運んできた。餅にはならなんだ。'},
+ susuharai:{on:(Y,m,d)=>m===12&&d===13,
+  scene:'n:少女が、背丈より長い笹竹を抱えて、社の軒先をぱたぱたと払っている。¶smug:来たか！ 今日は煤払いじゃ。一年分の煤を払うて、正月の神を迎える支度を始める日じゃぞ。¶confused:……正月の神？ わしのことじゃ。自分で自分を迎える支度をしておるのじゃ。¶n:払った煤が、少女の頭にふわりと降ってきた。双葉の先が、少し黒い。¶pout:……こ、これは煤ではない。影じゃ。冬の日は、影が濃いのじゃ！',
+  line:'smug:……そなたの家も、今日から少しずつ払うておくのじゃぞ。正月はすぐそこじゃ。',
+  nk:'煤払い。笹竹で軒の煤を払うた。双葉の先が黒う見えたのは、影じゃ。'},
+ kagamibiraki:{on:(Y,m,d)=>m===1&&d===11,
+  scene:'n:社の縁側に、ひび割れた丸い餅が置いてある。その横に、小さな木槌。¶happy:来たか！ 今日は鏡開きじゃ。正月に狸の一家が供えてくれた鏡餅を下げて、食べる日じゃぞ。¶smug:刃物で切ってはならぬ。木槌で叩くのじゃ。「割る」とも言わぬ。「開く」と言うのじゃ。縁起を担ぐのじゃな。¶n:少女は木槌を振り下ろした。餅は、びくともしなかった。¶pout:……こ、これは餅が頑固なのじゃ。乾いた餅と清らかな神とは、相性というものがある。¶hungry:……そなた、開いてくれぬか。開いたら、おしるこにするのじゃ。',
+  line:'hungry:……鏡開きの餅は、おしるこが一番じゃ。異論は認めぬ。',
+  nk:'鏡開き。木槌で鏡餅を開こうとした。今年の餅は、ずいぶん頑固じゃった。'},
+ koshogatsu:{on:(Y,m,d)=>m===1&&d===15,
+  scene:'n:境内の真ん中に、松飾りと注連縄が小さく積んであり、細い煙が上がっている。¶smug:来たか。今日は小正月じゃ。正月の飾りを集めて焚く、どんど焼きの日じゃぞ。¶normal:この火にあたると、一年風邪をひかぬ。煙に乗って、正月の神が帰ってゆくのじゃ。¶confused:……わしは帰らぬぞ？ ここが家じゃからな。¶hungry:それとな、この火で炙った団子を食べると、一年息災なのじゃ。枝に刺して、こう、炙るのじゃ。¶n:少女の手には、もう団子を刺す枝が握られていた。団子は、まだない。',
+  line:'normal:……小正月の火にあたった者は、一年風邪をひかぬ。そなたも、あたっていくがよい。',
+  nk:'小正月。正月の飾りを焚いた。団子を炙る枝は用意した。団子は来なんだ。'}
+});
+const GY5_IDS=['niiname','susuharai','kagamibiraki','koshogatsu'];
+const GY5_TALK=[
+ [/新嘗祭|にいなめさい/,'smug:新嘗祭か！ 穫れたての米を神に供えて、実りに礼を言う日じゃな。¶normal:神が口をつけてから、人の子も新米を食べる。……昔は、そういう順番じゃった。¶hungry:わしの分は、甘い餅にしてくれてよいのじゃぞ。'],
+ [/勤労感謝/,'normal:勤労感謝の日か。もとは新嘗祭というてな、実りに礼を言う日じゃ。¶smug:よう働いた者を労う日でもある。……そなたも、よう励んでおるからの。今日はわしが褒めてつかわす！'],
+ [/煤払い|すす払い|すすはらい|煤掃き|すすはき/,'smug:煤払いか！ 笹竹で一年分の煤を払うて、正月の支度を始めるのじゃな。¶normal:昔は村じゅうが、この日に一斉に払うたものじゃ。山の上まで、ぱたぱたと音が聞こえてきてのう。'],
+ [/(?<!仕)事始め|(?<!しご)ことはじめ/,'normal:事始めか。正月の支度を始める日じゃな。¶smug:煤を払うて、松を迎えて、餅をつく。……餅をつく、のところが一番大事じゃぞ。'],
+ [/鏡開き|かがみびらき|(?:鏡餅|かがみもち).{0,4}(?:割|開|下げ|食べ|たべ)/,'happy:鏡開きか！ 正月の鏡餅を木槌で開いて、食べる日じゃな。¶smug:神に供えた餅には、力が宿っておる。食べれば一年、息災じゃ。¶hungry:……おしるこにするのが一番じゃぞ。わしの分も忘れずにな。'],
+ [/鏡餅|かがみもち/,'smug:鏡餅か！ 丸い餅を二つ重ねて、正月の神に供えるのじゃな。¶hungry:……飾っておる間は食べられぬのが、もどかしいところじゃ。鏡開きまで、じっと我慢じゃぞ。'],
+ [/どんど焼き|どんどやき|とんど焼き|とんどやき|左義長|さぎちょう|正月飾り.{0,5}(?:燃|焼|焚)/,'happy:どんど焼きか！ 正月の飾りを焚く火じゃな。¶normal:あの火にあたると、一年風邪をひかぬ。書き初めを燃やして高う上がれば、字が上手うなるそうじゃ。¶hungry:……火で炙った団子も、忘れてはならぬぞ。'],
+ [/小正月|こしょうがつ/,'smug:小正月か！ 正月の飾りを焚いて、一年の息災を願う日じゃな。¶normal:小豆の粥を食べる日でもある。……小豆は甘う煮たほうが、わしは好みじゃがの。']
+];
+rule('gyojiTalk5',51.58,new RegExp(GY5_TALK.map(x=>x[0].source).join('|')),(ctx)=>{ const t=String(ctx.t||''); const e=GY5_TALK.find(x=>x[0].test(t)); return e?{g:{m:3},b:e[1]}:null; },
+ {cond:ctx=>{ const t=String(ctx&&ctx.t||''); return !crisisText(t)&&!lowOrTired(t)&&!/亡くな|なくな|死ん|しん(だ|じゃ)|逝/.test(t); }});
+T9_WHOLE.push('gyojiTalk5'); /* 「勤労感謝の日」がお礼（thanks）に取られるので、文全体で先に受ける */
+SCN_EV.push(
+ {e:'niiname',z:['shrine','shrineNew'],t:['bliss:縁側の稲穂は、今年の実りじゃ。……よい匂いがするのう。']},
+ {e:'niiname',z:['ground','sando'],t:['normal:稲の粒がこぼれておる。……雀どもが、運ぶ途中で落としたのじゃな。']},
+ {e:'susuharai',z:['shrine','shrineNew'],t:['smug:軒の煤は、わしが払うておいた。……高い所は、風に手伝わせたがの。']},
+ {e:'susuharai',z:['hall'],t:['normal:社務所の箒も、今日は大忙しじゃ。煤払いの後は、掃く物がたんと出るからの。']},
+ {e:'kagamibiraki',z:['shrine','shrineNew'],t:['hungry:縁側の餅は、今日開くのじゃ。……おしるこの鍋は、もう出してあるぞ。']},
+ {e:'kagamibiraki',z:['hall'],t:['normal:木槌は社務所の奥から出してきた。……年に一度しか使わぬ道具じゃ。']},
+ {e:'koshogatsu',z:['ground','sando'],t:['normal:正月の飾りは、ここで焚くのじゃ。……煙が真っ直ぐ上がれば、よい年じゃぞ。']},
+ {e:'koshogatsu',z:['sky'],t:['bliss:……煙が、よう上がっておる。正月の神も、迷わず帰れるじゃろう。']}
+);
+Object.assign(TZ_GY,{
+ niiname:['smug:新嘗祭じゃ。実りの礼に、わしを撫でていくのもよいぞ。'],
+ susuharai:['pout:今日は煤払いじゃ。……わしの頭は払わずともよい。煤など付いておらぬ！'],
+ kagamibiraki:['hungry:鏡開きじゃ。……そなたの手、餅の匂いがせぬか？ ……せぬか。'],
+ koshogatsu:['smug:小正月じゃ。……わしの袖、煙の匂いがするじゃろ。どんど焼きの名残じゃ。']
+});
+function GYOJI5_ALL_LINES(){ return [].concat(GY5_IDS.flatMap(id=>[GY[id].scene,GY[id].line]),GY5_IDS.map(id=>'normal:'+GY[id].nk),GY5_TALK.map(x=>x[1]),SCN_EV.filter(o=>GY5_IDS.includes(o.e)).flatMap(o=>o.t),GY5_IDS.flatMap(id=>TZ_GY[id])); }
+
+
+/* =====================================================================
+   2026-11-18 繰り返しの偏りを減らす（点検 2026-11-17 の「飾りの難」。自動の会話 568 往復で、札の知らせの前置きの地の文 3 つが
+   13・10・9 回、変身のあとの問い 2 つが 9・7 回と目立った）。検査 tests/check_katayori.js
+   ・札の知らせの前置き TTL_NOTE_LEAD に言い換えを 4 つ足す（3 → 7）
+   ・変身のあとの問い transform_next・transform_like の文に言い換え TF_Q_ALT（元の文と合わせて 4 通り）。
+     問いの文 q は、読むたびに選ぶ形にする（Object.defineProperty の get）。ただし同じ返事の間（C.cnt と S.day が同じ）は同じ文を返す
+     （問いを出した後で、出した文と突き合わせる所があるため：dayScene の「聞きたいことがあった」等）。
+     言い換えは、元の文と同じ書き出しの形にそろえる（先送りできるか FL_DEFERRABLE・続けて聞くか FL_TIGHT が同じ。
+     transform_like は「どう」で始め、transform_next は「どう・そなた・のう」等で始めない）
+   ===================================================================== */
+TTL_NOTE_LEAD.push('n:少女は双葉を小さく揺らして、{you}の方へ向き直った。','n:少女は何か言いたげに、{you}の袖をちょいと引いた。',
+  'n:ひと息ついたところで、少女が{you}を見上げた。','n:少女は顎に指を当てて、{you}をしげしげと眺めた。');
+const TF_Q_ALT={
+ transform_next:['smug:……さて、次はどんな姿が見たいのじゃ？ 遠慮せず申せ。','smug:むふー。次は何に化けてやろうかのう？ 望みがあれば申してみい。','happy:化けるのは楽しいのう！ ……次は何がよいと思う？'],
+ transform_like:['smug:どうじゃ、見事な化けっぷりじゃろう？ 気に入ったか？','happy:どうじゃどうじゃ？ わしの化けっぷり、気に入ったじゃろう？','smug:……どうじゃ？ この姿もなかなかのものじゃろう？']
+};
+for(const [id,L] of Object.entries(TF_Q_ALT)){ const T=THREADS[id]; if(!T||typeof T.q!=='string') continue;
+  let q0=T.q, key=null, v=q0;
+  Object.defineProperty(T,'q',{configurable:true,enumerable:true,
+    get(){ try{ const k=C.cnt+':'+S.day; if(k!==key){ key=k; v=pick('tfQ_'+id,[q0,...L]); } return v; }catch(_){ return q0; } },
+    set(x){ q0=x; key=null; }}); }
+
+/* =====================================================================
+   2026-11-18 拗ねている時の挨拶の食い違い（点検 2026-11-17：下の案内は「拗ねているみたい」なのに、開いた時の一言が「むふー、待っておったぞ」）。
+   検査 tests/check_suneru.js。会話を開いた時の挨拶 OPEN_SULK・なでる PAT_SULK・甘味 SWEET_SULK は第23回からある。足りなかった 2 か所：
+   ・起動した時の吹き出し（BOOT の「おお、{name}！ よう来た！」等の 3 つ）：bubble を包み、拗ねている時（moodSulky）は BOOT_SULK に替える。
+     ほかの吹き出しは替えない
+   ・翌日に来た時の場面（dayScene の 'visit'）：拗ねている間だけ、再訪の挨拶の表 GREET_BACK を VISIT_SULK に差し替えて組み立てる
+     （同じ回数だけ乱数を引くので、拗ねていない時の場面は一字一句同じ）。挨拶の代わりに出来事が入る日・久しぶりの日（awayTake。もとから拗ねた口ぶり）はそのまま
+   ・冷たく突き放さない（拗ねても、そばにいることは許す口ぶり）
+   ===================================================================== */
+const BOOT_GREET=['おお、{name}！ よう来た！','むふー、待っておったぞ','{name}か。……たぶん'];
+const BOOT_SULK=['……つーん。来たのは見ておったぞ。','……む。来たか。……ふん、遅いのじゃ。','……ぷい。べ、別に待ってなどおらぬぞ。'];
+const VISIT_SULK=['pout:……む。来たか。¶n:少女はちらりとこちらを見て、ぷいと横を向いた。けれど、双葉だけはぴこんと立っている。',
+ 'pout:……ふん。今日も来たのか。¶pout:……わしはまだ、ちと機嫌が悪いのじゃ。……じゃが、隣に座るくらいは許してやる。',
+ 'n:{you}の足音に、少女の双葉がぴくりと揺れた。けれど少女は、頬をふくらませたまま振り向かない。¶pout:……つーん。……来るのが遅いのじゃ。'];
+(()=>{ const base=bubble; bubble=function(t,...a){ try{ if(BOOT_GREET.includes(t)&&moodSulky()) t=rnd(BOOT_SULK); }catch(_){} return base.call(this,t,...a); }; })();
+LAYER('bubble','2026-11-18：拗ねている時は、起動した時の明るい挨拶の吹き出しを、拗ねた一言に替える');
+(()=>{ const base=dayScene; dayScene=function(kind,o){ if(kind!=='visit'||!moodSulky()) return base(kind,o);
+  const keep=Object.assign({},GREET_BACK); for(const k of Object.keys(GREET_BACK)) GREET_BACK[k]=VISIT_SULK;
+  try{ return base(kind,o); }finally{ Object.assign(GREET_BACK,keep); } }; })();
+LAYER('dayScene','2026-11-18：拗ねている時の翌日の場面は、再訪の挨拶を拗ねた挨拶（VISIT_SULK）に');
 
 /* ============ OVERLAYS ============ */
 function showStart(){
